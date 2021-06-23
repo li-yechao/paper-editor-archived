@@ -25,6 +25,7 @@ export default class ImageBlock extends Node {
   get schema(): NodeSpec {
     return {
       attrs: { src: { default: null }, caption: { default: null } },
+      marks: '',
       group: 'block',
       defining: true,
       isolating: true,

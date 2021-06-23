@@ -9,6 +9,7 @@ export default class Title extends Node {
   get schema(): NodeSpec {
     return {
       content: 'text*',
+      marks: '',
       defining: true,
       parseDOM: [{ tag: 'h1.title' }],
       toDOM: () => ['h1', { class: 'title' }, 0],

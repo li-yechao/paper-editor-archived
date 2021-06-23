@@ -11,6 +11,7 @@ export default class Heading extends Node {
     return {
       attrs: { level: { default: 1 } },
       content: 'text*',
+      marks: '',
       group: 'block',
       defining: true,
       parseDOM: [
