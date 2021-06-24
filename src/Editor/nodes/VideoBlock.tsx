@@ -2,13 +2,11 @@ import styled from '@emotion/styled'
 import { createFFmpeg } from '@ffmpeg/ffmpeg'
 import PauseRoundedIcon from '@material-ui/icons/PauseRounded'
 import PlayArrowRoundedIcon from '@material-ui/icons/PlayArrowRounded'
-import { Node as ProsemirrorNode, NodeSpec } from 'prosemirror-model'
-import { EditorView } from 'prosemirror-view'
-import React, { useEffect, useRef, useState } from 'react'
-import ReactDOM from 'react-dom'
-import { useToggle } from 'react-use'
+import { NodeSpec } from 'prosemirror-model'
+import React, { useCallback, useEffect, useRef } from 'react'
+import { useMountedState, useUpdate } from 'react-use'
 import { FigureView } from '../lib/FigureView'
-import Node, { NodeViewCreator } from './Node'
+import Node, { createReactNodeViewCreator, NodeViewCreator } from './Node'
 
 export interface VideoBlockOptions {
   upload: (file: File) => Promise<string>
@@ -60,155 +58,153 @@ export default class VideoBlock extends Node {
   }
 
   get nodeView(): NodeViewCreator {
-    return ({ node, view, getPos }) => {
-      const dom = document.createElement('div')
-      let selected = false
-      const render = () => {
-        const C = this.component
-        ReactDOM.render(<C node={node} view={view} selected={selected} getPos={getPos} />, dom)
-      }
-      render()
+    return createReactNodeViewCreator(
+      ({
+        file,
+        src,
+        caption,
+        selected,
+        readOnly,
+        onSrcChange,
+        onCaptionChange,
+      }: {
+        file?: File
+        src?: string
+        caption?: string
+        selected?: boolean
+        readOnly?: boolean
+        onSrcChange?: (src: string) => void
+        onCaptionChange?: (caption: string) => void
+      }) => {
+        const _mounted = useMountedState()
+        const _update = useUpdate()
+        const update = useCallback(() => _mounted() && _update(), [])
 
-      return {
-        dom,
-        update: updatedNode => {
-          if (updatedNode.type !== node.type) {
-            return false
+        const player = useRef<HTMLVideoElement>(null)
+        const playing = useRef(true)
+        const url = useRef<string>()
+        const loading = useRef(false)
+
+        const setPlaying = useCallback((p: boolean) => {
+          playing.current = p
+          update()
+        }, [])
+
+        const setUrl = useCallback((u: string) => {
+          url.current = u
+          update()
+        }, [])
+
+        const setLoading = useCallback((l: boolean) => {
+          loading.current = l
+          update()
+        }, [])
+
+        useEffect(() => {
+          ;(async () => {
+            if (src) {
+              setUrl(await this.options.getSrc(src))
+            }
+          })()
+        }, [src])
+
+        useEffect(() => {
+          if (!file) {
+            return
           }
-          node = updatedNode
-          render()
-          return true
-        },
-        selectNode: () => {
-          if (view.editable) {
-            selected = true
-            render()
+          ;(async () => {
+            setLoading(true)
+            try {
+              if (file.type !== 'video/mp4') {
+                const ffmpeg = createFFmpeg({
+                  corePath: './static/ffmpeg-core/ffmpeg-core.js',
+                })
+                await ffmpeg.load()
+                const buffer = await file.arrayBuffer()
+                ffmpeg.FS('writeFile', file.name, new Uint8Array(buffer, 0, buffer.byteLength))
+                await ffmpeg.run('-i', file.name, 'output.mp4')
+                const output = await ffmpeg.FS('readFile', 'output.mp4')
+                file = new File(
+                  [new Blob([output.buffer], { type: 'video/mp4' })],
+                  `${file.name}.mp4`
+                )
+              }
+
+              setUrl(URL.createObjectURL(file))
+
+              const src = await this.options.upload(file)
+              setUrl(await this.options.getSrc(src))
+              onSrcChange?.(src)
+            } finally {
+              setLoading(false)
+            }
+          })()
+        }, [file])
+
+        const handleCaptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+          onCaptionChange?.(e.target.value)
+        }, [])
+
+        const playPause = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (playing.current) {
+            player.current?.pause()
+          } else {
+            player.current?.play()
           }
-        },
-        deselectNode: () => {
-          selected = false
-          render()
-        },
+          setPlaying(!playing)
+        }, [])
+
+        return (
+          <FigureView
+            selected={selected}
+            readOnly={readOnly}
+            caption={caption}
+            loading={loading.current}
+            onCaptionChange={handleCaptionChange}
+            toggleStopEvent={e => (this.stopEvent = e)}
+          >
+            <_Content>
+              <video
+                ref={player}
+                muted
+                autoPlay={playing.current}
+                playsInline
+                src={url.current || undefined}
+                onEnded={() => setPlaying(false)}
+                onPause={() => setPlaying(false)}
+                onPlay={() => setPlaying(true)}
+              />
+
+              <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={playPause}>
+                {playing.current ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
+              </_PlayButton>
+            </_Content>
+          </FigureView>
+        )
+      },
+      ({ selected, node, view, getPos }) => {
+        return {
+          file: (node as any).file,
+          src: node.attrs.src,
+          caption: node.attrs.caption,
+          selected,
+          readOnly: !view.editable,
+          onSrcChange: src => {
+            view.dispatch(view.state.tr.setNodeMarkup(getPos(), undefined, { ...node.attrs, src }))
+          },
+          onCaptionChange: caption => {
+            view.dispatch(
+              view.state.tr.setNodeMarkup(getPos(), undefined, { ...node.attrs, caption })
+            )
+          },
+        }
+      },
+      {
         stopEvent: () => this.stopEvent,
         ignoreMutation: () => true,
-        destroy: () => {
-          ReactDOM.unmountComponentAtNode(dom)
-        },
       }
-    }
-  }
-
-  component = ({
-    node,
-    view,
-    selected,
-    getPos,
-  }: {
-    node: ProsemirrorNode
-    view: EditorView
-    selected: boolean
-    getPos: boolean | (() => number)
-  }) => {
-    const player = useRef<HTMLVideoElement>(null)
-    const [playing, togglePlaying] = useToggle(true)
-    const [src, setSrc] = useState<string | null>()
-    const [loading, setLoading] = useState(false)
-
-    useEffect(() => {
-      ;(async () => {
-        if (node.attrs.src) {
-          setSrc(await this.options.getSrc(node.attrs.src))
-        }
-      })()
-    }, [node.attrs.src])
-
-    useEffect(() => {
-      let file = (node as any).file as File
-      if (!file) {
-        return
-      }
-      ;(async () => {
-        setLoading(true)
-
-        if (file.type !== 'video/mp4') {
-          const ffmpeg = createFFmpeg({
-            corePath: './static/ffmpeg-core/ffmpeg-core.js',
-          })
-          await ffmpeg.load()
-          const buffer = await file.arrayBuffer()
-          ffmpeg.FS('writeFile', file.name, new Uint8Array(buffer, 0, buffer.byteLength))
-          await ffmpeg.run('-i', file.name, 'output.mp4')
-          const output = await ffmpeg.FS('readFile', 'output.mp4')
-          file = new File([new Blob([output.buffer], { type: 'video/mp4' })], `${file.name}.mp4`)
-        }
-
-        setSrc(URL.createObjectURL(file))
-        try {
-          const src = await this.options.upload(file)
-          setSrc(await this.options.getSrc(src))
-          if (typeof getPos === 'function') {
-            view.dispatch(
-              view.state.tr.setNodeMarkup(getPos(), node.type, {
-                ...node.attrs,
-                src,
-                caption: file.name,
-              })
-            )
-          }
-        } finally {
-          setLoading(false)
-        }
-      })()
-    }, [])
-
-    const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (typeof getPos === 'function') {
-        view.dispatch(
-          view.state.tr.setNodeMarkup(getPos(), node.type, {
-            ...node.attrs,
-            caption: e.target.value,
-          })
-        )
-      }
-    }
-
-    const playPause = (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (playing) {
-        player.current?.pause()
-      } else {
-        player.current?.play()
-      }
-      togglePlaying()
-    }
-
-    return (
-      <FigureView
-        selected={selected}
-        readOnly={!view.editable}
-        caption={node.attrs.caption}
-        loading={loading}
-        onCaptionChange={handleCaptionChange}
-        toggleStopEvent={e => (this.stopEvent = e)}
-      >
-        <_Content>
-          <video
-            ref={player}
-            muted
-            autoPlay={playing}
-            playsInline
-            src={src || undefined}
-            onEnded={() => togglePlaying(false)}
-            onPause={() => togglePlaying(false)}
-            onPlay={() => togglePlaying(true)}
-          />
-
-          <_PlayButton onMouseUp={playPause} onTouchEnd={playPause}>
-            {playing ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
-          </_PlayButton>
-        </_Content>
-      </FigureView>
     )
   }
 }
