@@ -1,5 +1,6 @@
+import { ThemeProvider as EmotionThemeProvider } from '@emotion/react'
 import styled from '@emotion/styled'
-import { StylesProvider } from '@material-ui/core'
+import { createMuiTheme, MuiThemeProvider, StylesProvider } from '@material-ui/core'
 import { createHotkey } from '@react-hook/hotkey'
 import { collab, getVersion, receiveTransaction, sendableSteps } from 'prosemirror-collab'
 import { baseKeymap } from 'prosemirror-commands'
@@ -87,9 +88,15 @@ export interface CollabListenEvents {
 }
 
 export const App = hot(() => {
+  const theme = createMuiTheme()
+
   return (
     <StylesProvider injectFirst>
-      <_App />
+      <MuiThemeProvider theme={theme}>
+        <EmotionThemeProvider theme={theme}>
+          <_App />
+        </EmotionThemeProvider>
+      </MuiThemeProvider>
     </StylesProvider>
   )
 })
@@ -210,12 +217,12 @@ class _App extends React.PureComponent<{}> {
       new ListItem(),
       new CodeBlock({ clientID: e.collab?.clientID }),
 
-      new Link(),
       new Bold(),
       new Italic(),
-      new Code(),
       new Underline(),
       new Strikethrough(),
+      new Code(),
+      new Link(),
 
       new Plugins(
         [

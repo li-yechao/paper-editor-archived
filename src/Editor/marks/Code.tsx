@@ -1,6 +1,10 @@
+import { Code as CodeIcon } from '@material-ui/icons'
 import { Keymap, toggleMark } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { MarkSpec, MarkType } from 'prosemirror-model'
+import React from 'react'
+import createMenuComponent, { MenuComponentType } from '../lib/createMenuComponent'
+import isMarkActive from '../lib/isMarkActive'
 import markInputRule from '../lib/markInputRule'
 import Mark from './Mark'
 
@@ -11,6 +15,7 @@ export default class Code extends Mark {
 
   get schema(): MarkSpec {
     return {
+      excludes: '_',
       parseDOM: [{ tag: 'code' }],
       toDOM: () => ['code'],
     }
@@ -26,5 +31,15 @@ export default class Code extends Mark {
     return {
       'Mod`': toggleMark(type),
     }
+  }
+
+  menus({ type }: { type: MarkType }): MenuComponentType[] {
+    return [
+      createMenuComponent({
+        children: <CodeIcon />,
+        isActive: isMarkActive(type),
+        toggleMark: toggleMark(type),
+      }),
+    ]
   }
 }

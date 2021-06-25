@@ -1,6 +1,7 @@
 import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { MarkSpec, MarkType, Schema } from 'prosemirror-model'
+import { MenuComponentType } from '../lib/createMenuComponent'
 import Extension, { ExtensionType } from '../lib/Extension'
 
 export default abstract class Mark extends Extension {
@@ -19,5 +20,9 @@ export default abstract class Mark extends Extension {
 
   keymap<S extends Schema<any, any>>(_options: { type: MarkType<S> }): Keymap<S> {
     return {}
+  }
+
+  menus<S extends Schema<any, any>>(_options: { type: MarkType<S> }): MenuComponentType[] {
+    return []
   }
 }

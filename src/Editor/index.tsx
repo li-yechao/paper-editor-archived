@@ -2,6 +2,7 @@ import styled from '@emotion/styled'
 import { Transaction } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { createRef } from 'react'
+import FloatingToolbar from './lib/FloatingToolbar'
 import Manager from './lib/Manager'
 
 export interface EditorProps {
@@ -46,18 +47,27 @@ export default class Editor extends React.PureComponent<EditorProps> {
       state: manager.createState(),
       editable: () => !readOnly,
       nodeViews: manager.nodeViews,
-      dispatchTransaction,
+      dispatchTransaction: tr => {
+        dispatchTransaction?.call(this.editorView!, tr)
+        this.forceUpdate()
+      },
     })
     this.props.onInited?.(this.editorView)
+    this.forceUpdate()
   }
 
   render() {
     return (
-      <_EditorContainer
-        className={this.props.className}
-        ref={this.container}
-        data-editable={!this.props.readOnly}
-      />
+      <>
+        <_EditorContainer
+          className={this.props.className}
+          ref={this.container}
+          data-editable={!this.props.readOnly}
+        />
+        {this.editorView && (
+          <FloatingToolbar editorView={this.editorView} menus={this.props.manager.menus} />
+        )}
+      </>
     )
   }
 }

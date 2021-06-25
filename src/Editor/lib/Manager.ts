@@ -75,6 +75,10 @@ export default class Manager {
     )
   }
 
+  get menus() {
+    return this.marks.flatMap(i => i.menus({ type: this.schema.marks[i.name]! }))
+  }
+
   createState() {
     return EditorState.create({
       schema: this.schema,
