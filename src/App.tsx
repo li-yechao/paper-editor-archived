@@ -44,6 +44,7 @@ import DropPasteFile from './Editor/plugins/DropPasteFile'
 import Plugins from './Editor/plugins/Plugins'
 import Messager from './Messager'
 import { notEmpty } from './utils/array'
+import Highlight from './Editor/marks/Highlight'
 
 export interface Config {
   collab?: CollabConfig
@@ -221,6 +222,7 @@ class _App extends React.PureComponent<{}> {
       new Italic(),
       new Underline(),
       new Strikethrough(),
+      new Highlight(),
       new Code(),
       new Link(),
 
