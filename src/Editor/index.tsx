@@ -325,4 +325,30 @@ const _EditorContainer = styled.div`
     margin-top: 8px;
     margin-bottom: 32px;
   }
+
+  .ProseMirror-gapcursor {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .ProseMirror-gapcursor:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: -2px;
+    width: 20px;
+    border-top: 1px solid currentColor;
+    animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+  }
+
+  @keyframes ProseMirror-cursor-blink {
+    to {
+      visibility: hidden;
+    }
+  }
+
+  .ProseMirror-focused .ProseMirror-gapcursor {
+    display: block;
+  }
 `
