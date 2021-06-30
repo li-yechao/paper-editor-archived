@@ -159,7 +159,8 @@ export default class CodeBlock extends Node {
         React.lazy(() => import('../../components/MonacoEditor')),
         <_FallbackContainer>
           <CupertinoActivityIndicator />
-        </_FallbackContainer>
+        </_FallbackContainer>,
+        { lazy: true }
       ),
       ({ node, view, getPos, selected }) => ({
         defaultValue: node.textContent,

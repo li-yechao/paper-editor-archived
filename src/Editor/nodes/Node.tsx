@@ -1,10 +1,13 @@
 import styled from '@emotion/styled'
 import { StylesProvider } from '@material-ui/core'
+import { throttle } from 'lodash'
 import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { NodeSpec, Node as ProsemirrorNode, NodeType, Schema } from 'prosemirror-model'
 import { EditorView, NodeView } from 'prosemirror-view'
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useState } from 'react'
+import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
 import Extension, { ExtensionType } from '../lib/Extension'
@@ -123,17 +126,54 @@ export function createReactNodeViewCreator<P>(
 
 export function lazyReactNodeView<P>(
   Component: React.LazyExoticComponent<React.ComponentType<P>>,
-  fallback: React.ReactNode = (
+  fallback: React.ReactElement = (
     <_FallbackContainer>
       <CupertinoActivityIndicator />
     </_FallbackContainer>
-  )
+  ),
+  { lazy = false }: { lazy?: boolean } = {}
 ): React.ComponentType<P> {
+  if (!lazy) {
+    return (p: P) => {
+      return (
+        <React.Suspense fallback={fallback}>
+          <Component {...p} />
+        </React.Suspense>
+      )
+    }
+  }
+
   return (p: P) => {
+    const container = useRef<HTMLDivElement>(null)
+    const [visible, setVisible] = useState(false)
+    useEffect(() => {
+      const handleScroll = throttle(() => {
+        if (container.current && !visible) {
+          const rect = container.current.getBoundingClientRect()
+          if (
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <= window.innerHeight &&
+            rect.right <= window.innerWidth
+          ) {
+            setVisible(true)
+          }
+        }
+      }, 500)
+
+      handleScroll()
+      window.addEventListener('scroll', handleScroll)
+      return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
     return (
-      <React.Suspense fallback={fallback}>
-        <Component {...p} />
-      </React.Suspense>
+      <div ref={container}>
+        {!visible ? (
+          fallback
+        ) : (
+          <React.Suspense fallback={fallback}>{visible && <Component {...p} />}</React.Suspense>
+        )}
+      </div>
     )
   }
 }
