@@ -45,6 +45,7 @@ import Plugins from './Editor/plugins/Plugins'
 import Messager from './Messager'
 import { notEmpty } from './utils/array'
 import Highlight from './Editor/marks/Highlight'
+import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
 
 export interface Config {
   collab?: CollabConfig
@@ -320,7 +321,11 @@ class _App extends React.PureComponent<{}> {
     const { editor, manager } = this
 
     if (!manager) {
-      return null
+      return (
+        <_Loading>
+          <CupertinoActivityIndicator />
+        </_Loading>
+      )
     }
 
     return (
@@ -334,6 +339,17 @@ class _App extends React.PureComponent<{}> {
     )
   }
 }
+
+const _Loading = styled.div`
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`
 
 const _Editor = styled(Editor)`
   .ProseMirror {
