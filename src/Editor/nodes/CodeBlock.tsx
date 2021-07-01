@@ -10,9 +10,16 @@ import Node, { createReactNodeViewCreator, lazyReactNodeView, NodeViewCreator } 
 
 type MonacoInstance = import('../../components/MonacoEditor').MonacoInstance
 
+const MonacoEditorTransactionMetaKey = 'MonacoEditorClientID'
+
 export default class CodeBlock extends Node {
   constructor(public options: { clientID?: string | number } = {}) {
     super()
+  }
+
+  private _clientID?: number
+  get clientID(): string | number {
+    return this.options.clientID ?? (this._clientID ??= Math.floor(Math.random() * 100000))
   }
 
   get name(): string {
@@ -103,6 +110,9 @@ export default class CodeBlock extends Node {
           }
 
           for (const tr of trs) {
+            if (tr.getMeta(MonacoEditorTransactionMetaKey) === this.clientID) {
+              continue
+            }
             for (const step of tr.steps) {
               if (step instanceof ReplaceStep) {
                 const from: number = (step as any).from
@@ -167,20 +177,32 @@ export default class CodeBlock extends Node {
         language: node.attrs.language,
         readOnly: !view.editable,
         focused: selected,
-        clientID: this.options.clientID,
+        clientID: this.clientID,
         onInited: e => this.setMonacoEditorInstanceByNode(node, e),
         onDestroyed: () => this.deleteMonacoEditorInstanceByNode(node),
         onInsert: (index: number, text: string) => {
           const pos = getPos() + 1
-          view.dispatch(view.state.tr.insertText(text, pos + index))
+          view.dispatch(
+            view.state.tr
+              .insertText(text, pos + index)
+              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
+          )
         },
         onReplace: (index: number, length: number, text: string) => {
           const pos = getPos() + 1
-          view.dispatch(view.state.tr.insertText(text, pos + index, pos + index + length))
+          view.dispatch(
+            view.state.tr
+              .insertText(text, pos + index, pos + index + length)
+              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
+          )
         },
         onDelete: (index: number, length: number) => {
           const pos = getPos() + 1
-          view.dispatch(view.state.tr.delete(pos + index, pos + index + length))
+          view.dispatch(
+            view.state.tr
+              .delete(pos + index, pos + index + length)
+              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
+          )
         },
         onLanguageChange: (language: string) => {
           view.dispatch(
