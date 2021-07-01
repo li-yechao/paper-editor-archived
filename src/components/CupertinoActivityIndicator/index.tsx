@@ -27,6 +27,7 @@ const _Container = styled.div`
 
   > div {
     width: 4%;
+    min-width: 1px;
     height: 16%;
     background: currentColor;
     position: absolute;
