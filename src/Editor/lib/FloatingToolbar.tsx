@@ -1,7 +1,9 @@
 import styled from '@emotion/styled'
 import { Box, ButtonGroup, Popper, Tooltip, TooltipProps } from '@material-ui/core'
+import { debounce } from 'lodash'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
+import { useState } from 'react'
 import { useEffect } from 'react'
 import { useToggle } from 'react-use'
 import { MenuComponentType } from './createMenuComponent'
@@ -44,8 +46,9 @@ export const FloatingToolbar = (props: FloatingToolbarProps) => {
 }
 
 function usePopperProps(editorView: EditorView) {
-  const props: Omit<TooltipProps, 'title'> = {
+  const defaultProps: Omit<TooltipProps, 'title'> = {
     open: false,
+    placement: 'top',
     arrow: true,
     disableFocusListener: true,
     disableHoverListener: true,
@@ -53,32 +56,39 @@ function usePopperProps(editorView: EditorView) {
     children: <div />,
   }
 
-  const { selection } = editorView.state
-  if (!selection.empty && !(selection as any).node) {
-    const node = editorView.domAtPos(selection.from).node
-    const anchorEl = node instanceof Element ? node : node.parentElement
+  const [props, setProps] = useState(defaultProps)
 
-    if (anchorEl) {
-      const fromPos = editorView.coordsAtPos(selection.from)
-      const toPos = editorView.coordsAtPos(selection.to)
-      const { width, left, top } = anchorEl.getBoundingClientRect()
-      const offsetX = (toPos.left - fromPos.left) / 2 + fromPos.left - left - width / 2
-      const offsetY = top - fromPos.top
+  useEffect(
+    debounce(() => {
+      const props = { ...defaultProps }
 
-      props.placement = 'top'
-      props.open = true
-      props.PopperProps = {
-        anchorEl,
-        disablePortal: true,
-        keepMounted: true,
-        modifiers: {
-          offset: { offset: `${offsetX},${offsetY}` },
-          flip: { enabled: false },
-          preventOverflow: { boundariesElement: editorView.dom },
-        },
+      const { selection } = editorView.state
+      if (!selection.empty && !(selection as any).node) {
+        const node = editorView.domAtPos(selection.from).node
+        const anchorEl = node instanceof Element ? node : node.parentElement
+
+        if (anchorEl) {
+          const fromPos = editorView.coordsAtPos(selection.from)
+          const toPos = editorView.coordsAtPos(selection.to)
+          const { width, left, top } = anchorEl.getBoundingClientRect()
+          const offsetX = (toPos.left - fromPos.left) / 2 + fromPos.left - left - width / 2
+          const offsetY = top - fromPos.top + 4
+
+          props.open = true
+          props.PopperProps = {
+            anchorEl,
+            keepMounted: true,
+            modifiers: {
+              offset: { offset: `${offsetX},${offsetY}` },
+              preventOverflow: { boundariesElement: 'viewport' },
+            },
+          }
+        }
       }
-    }
-  }
+
+      setProps(props)
+    }, 700)
+  )
 
   return props
 }
