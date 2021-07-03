@@ -137,7 +137,7 @@ const MonacoEditor = ({
       <_Select
         native
         variant="outlined"
-        value={language}
+        value={language || 'plaintext'}
         disabled={readOnly}
         onChange={handleLanguageChange}
         onMouseUp={handleLanguageMouseUp}
