@@ -8,7 +8,7 @@ import Node from '../nodes/Node'
 import Extension from './Extension'
 
 export default class Manager {
-  constructor(private extensions: Extension[] = [], private doc?: { [key: string]: any }) {
+  constructor(public extensions: Extension[] = [], private doc?: { [key: string]: any }) {
     this.schema = new Schema({
       nodes: this.nodeSpecs,
       marks: this.markSpecs,

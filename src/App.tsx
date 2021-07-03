@@ -1,6 +1,8 @@
 import { ThemeProvider as EmotionThemeProvider } from '@emotion/react'
 import styled from '@emotion/styled'
-import { createMuiTheme, MuiThemeProvider, StylesProvider } from '@material-ui/core'
+import { Box, createMuiTheme, MuiThemeProvider, StylesProvider } from '@material-ui/core'
+import { Image } from '@material-ui/icons'
+import { SpeedDial, SpeedDialAction, SpeedDialIcon } from '@material-ui/lab'
 import { createHotkey } from '@react-hook/hotkey'
 import { collab, getVersion, receiveTransaction, sendableSteps } from 'prosemirror-collab'
 import { baseKeymap } from 'prosemirror-commands'
@@ -13,15 +15,16 @@ import { Node } from 'prosemirror-model'
 import { Transaction } from 'prosemirror-state'
 import { Step } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
-import React from 'react'
-import { createRef } from 'react'
+import React, { createRef } from 'react'
 import { hot } from 'react-hot-loader/root'
+import { useToggle } from 'react-use'
 import { io, Socket } from 'socket.io-client'
+import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
 import Editor from './Editor'
-import Placeholder from './Editor/plugins/Placeholder'
 import Manager from './Editor/lib/Manager'
 import Bold from './Editor/marks/Bold'
 import Code from './Editor/marks/Code'
+import Highlight from './Editor/marks/Highlight'
 import Italic from './Editor/marks/Italic'
 import Link from './Editor/marks/Link'
 import Strikethrough from './Editor/marks/Strikethrough'
@@ -41,11 +44,10 @@ import TodoItem from './Editor/nodes/TodoItem'
 import TodoList from './Editor/nodes/TodoList'
 import VideoBlock from './Editor/nodes/VideoBlock'
 import DropPasteFile from './Editor/plugins/DropPasteFile'
+import Placeholder from './Editor/plugins/Placeholder'
 import Plugins from './Editor/plugins/Plugins'
 import Messager from './Messager'
 import { notEmpty } from './utils/array'
-import Highlight from './Editor/marks/Highlight'
-import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
 
 export interface Config {
   collab?: CollabConfig
@@ -329,15 +331,68 @@ class _App extends React.PureComponent<{}> {
     }
 
     return (
-      <_Editor
-        ref={editor}
-        autoFocus
-        manager={manager}
-        dispatchTransaction={this.dispatchTransaction}
-        onInited={this.onEditorInited}
-      />
+      <>
+        <_Editor
+          ref={editor}
+          autoFocus
+          manager={manager}
+          dispatchTransaction={this.dispatchTransaction}
+          onInited={this.onEditorInited}
+        />
+        <Box position="fixed" bottom={16} right={16}>
+          <_SpeedDial editor={editor} manager={manager} />
+        </Box>
+      </>
     )
   }
+}
+
+const _SpeedDial = ({ editor, manager }: { editor: React.RefObject<Editor>; manager: Manager }) => {
+  const [open, toggleOpen] = useToggle(false)
+
+  const handleImageClick = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*,video/*'
+    input.multiple = true
+    input.style.position = 'absolute'
+    input.style.left = '-1000px'
+    input.style.top = '0px'
+    input.onchange = () => {
+      try {
+        const editorView = editor.current?.editorView
+        const fileToNode = (manager.extensions.find(
+          i => i instanceof DropPasteFile
+        ) as DropPasteFile | null)?.options.fileToNode
+
+        if (editorView && fileToNode && input.files?.length) {
+          const nodes = Array.from(input.files)
+            .map(i => fileToNode(editorView, i))
+            .filter(notEmpty)
+          const { from, to } = editorView.state.selection
+          editorView.dispatch(editorView.state.tr.replaceWith(from, to, nodes))
+        }
+      } finally {
+        document.body.removeChild(input)
+      }
+    }
+
+    document.body.append(input)
+    input.click()
+  }
+
+  return (
+    <SpeedDial
+      ariaLabel="Add"
+      open={open}
+      onOpen={toggleOpen}
+      onClose={toggleOpen}
+      icon={<SpeedDialIcon />}
+      direction="left"
+    >
+      <SpeedDialAction icon={<Image />} tooltipTitle="图片/视频" onClick={handleImageClick} />
+    </SpeedDial>
+  )
 }
 
 const _Loading = styled.div`

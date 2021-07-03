@@ -9,7 +9,7 @@ export interface DropPasteFileOptions {
 }
 
 export default class DropPasteFile extends Extension {
-  constructor(private options: DropPasteFileOptions) {
+  constructor(public options: DropPasteFileOptions) {
     super()
   }
 
