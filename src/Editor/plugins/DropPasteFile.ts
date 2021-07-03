@@ -1,4 +1,4 @@
-import { Node as ProsemirrorNode } from 'prosemirror-model'
+import { Fragment, Node as ProsemirrorNode, Slice } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { notEmpty } from '../../utils/array'
@@ -35,8 +35,7 @@ export default class DropPasteFile extends Extension {
                 return false
               }
 
-              const { from, to } = view.state.selection
-              view.dispatch(view.state.tr.replaceWith(from, to, nodes))
+              view.dispatch(view.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0)))
 
               event.preventDefault()
               return true

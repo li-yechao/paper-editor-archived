@@ -11,7 +11,7 @@ import { gapCursor } from 'prosemirror-gapcursor'
 import { undo, redo, history } from 'prosemirror-history'
 import { undoInputRule } from 'prosemirror-inputrules'
 import { keymap } from 'prosemirror-keymap'
-import { Node } from 'prosemirror-model'
+import { Fragment, Node, Slice } from 'prosemirror-model'
 import { Transaction } from 'prosemirror-state'
 import { Step } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
@@ -369,8 +369,9 @@ const _SpeedDial = ({ editor, manager }: { editor: React.RefObject<Editor>; mana
           const nodes = Array.from(input.files)
             .map(i => fileToNode(editorView, i))
             .filter(notEmpty)
-          const { from, to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.replaceWith(from, to, nodes))
+          editorView.dispatch(
+            editorView.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0))
+          )
         }
       } finally {
         document.body.removeChild(input)
