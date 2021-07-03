@@ -57,15 +57,17 @@ export default class CodeBlock extends Node {
 
   private isCodeBlock(doc: ProsemirrorNode, from: number, to: number) {
     let res: { node: ProsemirrorNode; pos: number } | undefined
-    doc.nodesBetween(from, to, (node, pos) => {
-      if (node.type.name === this.name) {
-        if (from > pos && to < pos + node.nodeSize) {
-          res = { node, pos }
+    try {
+      doc.nodesBetween(from, to, (node, pos) => {
+        if (node.type.name === this.name) {
+          if (from > pos && to < pos + node.nodeSize) {
+            res = { node, pos }
+          }
+          return false
         }
-        return false
-      }
-      return
-    })
+        return
+      })
+    } catch {}
     return res
   }
 
