@@ -273,20 +273,17 @@ class _App extends React.PureComponent<{}> {
     this.forceUpdate()
   }
 
-  private dispatchTransaction = (tr: Transaction) => {
-    const { editorView, collabClient } = this
-    if (!editorView) {
-      return
-    }
-    const newState = editorView.state.apply(tr)
-    editorView.updateState(newState)
+  private dispatchTransaction = (view: EditorView, tr: Transaction) => {
+    const { collabClient } = this
+    const newState = view.state.apply(tr)
+    view.updateState(newState)
 
     let sendable: ReturnType<typeof sendableSteps>
     if (collabClient && (sendable = sendableSteps(newState))) {
-      editorView.updateState(
-        editorView.state.apply(
+      view.updateState(
+        view.state.apply(
           receiveTransaction(
-            editorView.state,
+            view.state,
             sendable.steps,
             new Array(sendable.steps.length).fill(sendable.clientID)
           )
@@ -300,10 +297,10 @@ class _App extends React.PureComponent<{}> {
     }
 
     if (tr.docChanged) {
-      const version = getVersion(editorView.state)
+      const version = getVersion(view.state)
       this.messager.emit('change', { version })
 
-      const title = this.getDocTitle(this.editorView?.state.doc)
+      const title = this.getDocTitle(view.state.doc)
       if (title !== undefined) {
         this.title = title
       }

@@ -1,5 +1,5 @@
 import styled from '@emotion/styled'
-import { Transaction } from 'prosemirror-state'
+import { TextSelection, Transaction } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { createRef } from 'react'
 import FloatingToolbar from './lib/FloatingToolbar'
@@ -10,7 +10,7 @@ export interface EditorProps {
   readOnly?: boolean
   autoFocus?: boolean
   manager: Manager
-  dispatchTransaction?: ((this: EditorView, tr: Transaction) => void) | null
+  dispatchTransaction?: ((view: EditorView, tr: Transaction) => void) | null
   onInited?: (editorView: EditorView) => void
 }
 
@@ -48,10 +48,14 @@ export default class Editor extends React.PureComponent<EditorProps> {
       editable: () => !readOnly,
       nodeViews: manager.nodeViews,
       dispatchTransaction: tr => {
-        dispatchTransaction?.call(this.editorView!, tr)
+        dispatchTransaction?.(this.editorView!, tr)
         this.forceUpdate()
       },
     })
+
+    const { tr, doc } = this.editorView.state
+    this.editorView.dispatch(tr.setSelection(TextSelection.atEnd(doc)))
+
     this.props.onInited?.(this.editorView)
     this.forceUpdate()
   }
