@@ -1,3 +1,4 @@
+import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { StylesProvider } from '@material-ui/core'
 import { throttle } from 'lodash'
@@ -74,7 +75,19 @@ export function createReactNodeViewCreator<P>(
       contentDOM,
     } = options.createDom?.() ?? {}
     dom.append(reactDOM)
-    contentDOM && dom.append(contentDOM)
+
+    if (contentDOM) {
+      // NOTE: Apply correct node type in safari when IME input.
+      const zero = document.createElement('span')
+      zero.innerText = '\u200b'
+      zero.classList.add(css`
+        position: absolute;
+        left: 0;
+        top: 0;
+      `)
+
+      dom.append(zero, contentDOM)
+    }
 
     let selected = false
 
