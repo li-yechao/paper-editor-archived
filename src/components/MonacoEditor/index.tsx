@@ -166,6 +166,10 @@ const _RootContainer = styled.div`
     background-color: #1e1e1e;
     border: 1px solid transparent;
   }
+
+  .iPadShowKeyboard {
+    display: none;
+  }
 `
 
 const _Select = styled(Select)`
