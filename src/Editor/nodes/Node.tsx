@@ -5,7 +5,7 @@ import { throttle } from 'lodash'
 import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { NodeSpec, Node as ProsemirrorNode, NodeType, Schema } from 'prosemirror-model'
-import { EditorView, NodeView } from 'prosemirror-view'
+import { Decoration, EditorView, NodeView as ProsemirrorNodeView } from 'prosemirror-view'
 import React, { useEffect } from 'react'
 import { useState } from 'react'
 import { useRef } from 'react'
@@ -17,7 +17,7 @@ export type NodeViewCreator = (args: {
   node: ProsemirrorNode
   view: EditorView
   getPos: (() => number) | boolean
-}) => NodeView
+}) => ProsemirrorNodeView
 
 export default abstract class Node extends Extension {
   get type(): ExtensionType {
@@ -37,6 +37,67 @@ export default abstract class Node extends Extension {
   get nodeView(): NodeViewCreator | undefined {
     return undefined
   }
+}
+
+export abstract class NodeView implements ProsemirrorNodeView {
+  constructor(public node: ProsemirrorNode) {
+    setTimeout(() => this._render())
+  }
+
+  abstract dom: HTMLElement
+
+  abstract reactDOM: HTMLElement
+
+  contentDOM?: HTMLElement
+
+  selectNode?: () => void
+
+  deselectNode?: () => void
+
+  setSelection?: (anchor: number, head: number, root: Document) => void
+
+  stopEvent?: (event: Event) => boolean
+
+  ignoreMutation?: (p: MutationRecord | { type: 'selection'; target: Element }) => boolean
+
+  update(updatedNode: ProsemirrorNode, _decorations: Decoration[]) {
+    if (updatedNode.type !== this.node.type) {
+      return false
+    }
+    this.node = updatedNode
+    this._render()
+    return true
+  }
+
+  destroy() {
+    ReactDOM.unmountComponentAtNode(this.reactDOM)
+  }
+
+  abstract render(): React.ReactNode
+
+  _render() {
+    ReactDOM.render(<StylesProvider injectFirst>{this.render()}</StylesProvider>, this.reactDOM)
+  }
+}
+
+export abstract class NodeViewWithContent extends NodeView {
+  constructor(node: ProsemirrorNode) {
+    super(node)
+  }
+
+  selected = false
+
+  selectNode = () => {
+    this.selected = true
+    this._render()
+  }
+
+  deselectNode = () => {
+    this.selected = false
+    this._render()
+  }
+
+  setSelection = () => this.selectNode
 }
 
 export function createReactNodeViewCreator<P>(
@@ -101,7 +162,7 @@ export function createReactNodeViewCreator<P>(
     }
     render()
 
-    const nodeView: NodeView = {
+    const nodeView: ProsemirrorNodeView = {
       dom,
       contentDOM,
       update: updatedNode => {

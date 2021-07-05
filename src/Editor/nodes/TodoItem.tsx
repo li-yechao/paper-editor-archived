@@ -2,10 +2,11 @@ import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Checkbox } from '@material-ui/core'
 import { Keymap } from 'prosemirror-commands'
-import { NodeSpec, NodeType } from 'prosemirror-model'
+import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
 import { splitListItem } from 'prosemirror-schema-list'
+import { EditorView } from 'prosemirror-view'
 import React from 'react'
-import Node, { createReactNodeViewCreator, NodeViewCreator } from './Node'
+import Node, { NodeView, NodeViewCreator } from './Node'
 
 export default class TodoItem extends Node {
   constructor(private options: { readonly todoItemReadOnly?: boolean } = {}) {
@@ -50,59 +51,77 @@ export default class TodoItem extends Node {
   }
 
   get nodeView(): NodeViewCreator {
-    return createReactNodeViewCreator(
-      ({
-        checked,
-        disabled,
-        onChange,
-      }: {
-        checked: boolean
-        disabled: boolean
-        onChange: (checked: boolean) => void
-      }) => {
-        return (
-          <_Checkbox
-            checked={checked}
-            disabled={disabled}
-            onChange={(e, checked) => {
-              e.target.focus()
-              onChange(checked)
-            }}
-          />
-        )
-      },
-      ({ node, view, getPos }) => {
-        return {
-          checked: node.attrs.checked,
-          disabled: this.options.todoItemReadOnly ?? true,
-          onChange: checked => {
-            view.dispatch(
-              view.state.tr.setNodeMarkup(getPos(), undefined, { ...node.attrs, checked })
-            )
-          },
-        }
-      },
-      {
-        createDom: () => {
-          const dom = document.createElement('li')
-          const reactDOM = document.createElement('span')
-          reactDOM.contentEditable = 'false'
-          const contentDOM = document.createElement('div')
-          dom.classList.add(css`
-            position: relative;
-            list-style: none;
-          `)
-          reactDOM.classList.add(css`
-            position: absolute;
-            left: -32px;
-            top: 0;
-          `)
-
-          return { dom, reactDOM, contentDOM }
-        },
-        stopEvent: () => false,
-        ignoreMutation: () => true,
+    return ({ node, view, getPos }) => {
+      if (typeof getPos !== 'function') {
+        throw new Error(`Invalid getPos ${getPos}`)
       }
+
+      return new TodoItemNodeView(node, view, getPos, this.options.todoItemReadOnly ?? true)
+    }
+  }
+}
+
+class TodoItemNodeView extends NodeView {
+  constructor(
+    node: ProsemirrorNode,
+    private view: EditorView,
+    private getPos: () => number,
+    private todoItemReadOnly: boolean
+  ) {
+    super(node)
+
+    this.dom.classList.add(css`
+      position: relative;
+      list-style: none;
+    `)
+    this.reactDOM.contentEditable = 'false'
+    this.reactDOM.classList.add(css`
+      position: absolute;
+      left: -32px;
+      top: 0;
+    `)
+    const zero = document.createElement('span')
+    zero.innerText = '\u200b'
+    zero.classList.add(css`
+      position: absolute;
+      left: 0;
+      top: 0;
+    `)
+
+    this.dom.append(this.reactDOM, zero, this.contentDOM)
+  }
+
+  dom = document.createElement('li')
+  reactDOM = document.createElement('span')
+  contentDOM = document.createElement('div')
+
+  ignoreMutation = (e: MutationRecord | { type: 'selection'; target: Element }) => {
+    return this.reactDOM.contains(e.target)
+  }
+
+  get checked() {
+    return this.node.attrs.checked === true
+  }
+
+  get disabled() {
+    return this.todoItemReadOnly
+  }
+
+  render() {
+    return (
+      <_Checkbox
+        checked={this.checked}
+        disabled={this.disabled}
+        onChange={(e, checked) => {
+          e.target.focus()
+          this.view.dispatch(
+            this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
+              ...this.node.attrs,
+              checked,
+            })
+          )
+        }}
+      />
     )
   }
 }
