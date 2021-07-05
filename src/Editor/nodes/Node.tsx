@@ -97,7 +97,10 @@ export abstract class NodeViewWithContent extends NodeView {
     this._render()
   }
 
-  setSelection = () => this.selectNode
+  setSelection = () => {
+    this.selected = true
+    this._render()
+  }
 }
 
 export function createReactNodeViewCreator<P>(

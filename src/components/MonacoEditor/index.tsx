@@ -1,7 +1,7 @@
 import { EditorContentManager } from '@convergencelabs/monaco-collab-ext'
 import styled from '@emotion/styled'
 import { Select } from '@material-ui/core'
-import { editor } from 'monaco-editor'
+import { editor, IKeyboardEvent } from 'monaco-editor'
 import React, { useRef, useEffect, useCallback } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 
@@ -22,6 +22,8 @@ const MonacoEditor = ({
   onReplace,
   onDelete,
   onLanguageChange,
+  onKeyDown,
+  onKeyUp,
 }: {
   defaultValue?: string
   language?: string
@@ -34,6 +36,8 @@ const MonacoEditor = ({
   onReplace?: (index: number, length: number, text: string) => void
   onDelete?: (index: number, length: number) => void
   onLanguageChange?: (language: string) => void
+  onKeyDown?: (e: IKeyboardEvent, editor: editor.ICodeEditor) => void
+  onKeyUp?: (e: IKeyboardEvent, editor: editor.ICodeEditor) => void
 }) => {
   const _isMounted = useMountedState()
   const _update = useUpdate()
@@ -73,6 +77,7 @@ const MonacoEditor = ({
       readOnly,
       scrollBeyondLastLine: false,
     })
+
     contentManager.current = new EditorContentManager({
       editor: monacoEditor.current,
       remoteSourceId: clientID?.toString(),
@@ -97,9 +102,29 @@ const MonacoEditor = ({
 
     onInited?.({ editor: monacoEditor.current, contentManager: contentManager.current })
 
+    const model = monacoEditor.current.getModel()
+    if (model) {
+      const lineNumber = model.getLineCount()
+      monacoEditor.current.setPosition({ lineNumber, column: model.getLineLength(lineNumber) + 1 })
+    }
+
+    const keyDownDisposable =
+      onKeyDown &&
+      monacoEditor.current.onKeyDown(e => {
+        onKeyDown(e, monacoEditor.current!)
+      })
+
+    const keyUpDisposable =
+      onKeyUp &&
+      monacoEditor.current.onKeyUp(e => {
+        onKeyUp(e, monacoEditor.current!)
+      })
+
     return () => {
       matchMedia.removeEventListener('change', themeListener)
       onDestroyed?.()
+      keyDownDisposable?.dispose()
+      keyUpDisposable?.dispose()
       contentManager.current?.dispose()
       monacoEditor.current?.dispose()
     }

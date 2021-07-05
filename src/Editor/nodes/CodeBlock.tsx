@@ -3,10 +3,11 @@ import { InputRule, textblockTypeInputRule } from 'prosemirror-inputrules'
 import { Node as ProsemirrorNode, NodeSpec, NodeType, Slice } from 'prosemirror-model'
 import { Plugin, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
+import { EditorView } from 'prosemirror-view'
 import React from 'react'
 import { v4 } from 'uuid'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
-import Node, { createReactNodeViewCreator, lazyReactNodeView, NodeViewCreator } from './Node'
+import Node, { lazyReactNodeView, NodeViewCreator, NodeViewWithContent } from './Node'
 
 type MonacoInstance = import('../../components/MonacoEditor').MonacoInstance
 
@@ -35,7 +36,6 @@ export default class CodeBlock extends Node {
       code: true,
       defining: true,
       isolating: true,
-      atom: true,
       parseDOM: [
         {
           tag: 'pre',
@@ -79,13 +79,13 @@ export default class CodeBlock extends Node {
     }
     return editorId
   }
-  private getMonacoEditorInstanceByNode(node: ProsemirrorNode): MonacoInstance | undefined {
+  getMonacoEditorInstanceByNode(node: ProsemirrorNode): MonacoInstance | undefined {
     return this._monacoEditorInstances.get(this._checkEditorIdAttr(node))
   }
-  private setMonacoEditorInstanceByNode(node: ProsemirrorNode, instance: MonacoInstance) {
+  setMonacoEditorInstanceByNode(node: ProsemirrorNode, instance: MonacoInstance) {
     return this._monacoEditorInstances.set(this._checkEditorIdAttr(node), instance)
   }
-  private deleteMonacoEditorInstanceByNode(node: ProsemirrorNode) {
+  deleteMonacoEditorInstanceByNode(node: ProsemirrorNode) {
     return this._monacoEditorInstances.delete(this._checkEditorIdAttr(node))
   }
 
@@ -166,59 +166,125 @@ export default class CodeBlock extends Node {
   }
 
   get nodeView(): NodeViewCreator {
-    return createReactNodeViewCreator(
-      lazyReactNodeView(
-        React.lazy(() => import('../../components/MonacoEditor')),
-        <_FallbackContainer>
-          <CupertinoActivityIndicator />
-        </_FallbackContainer>,
-        { lazy: true }
-      ),
-      ({ node, view, getPos, selected }) => ({
-        defaultValue: node.textContent,
-        language: node.attrs.language,
-        readOnly: !view.editable,
-        focused: selected,
-        clientID: this.clientID,
-        onInited: e => this.setMonacoEditorInstanceByNode(node, e),
-        onDestroyed: () => this.deleteMonacoEditorInstanceByNode(node),
-        onInsert: (index: number, text: string) => {
-          const pos = getPos() + 1
-          view.dispatch(
-            view.state.tr
-              .insertText(text, pos + index)
-              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
-          )
-        },
-        onReplace: (index: number, length: number, text: string) => {
-          const pos = getPos() + 1
-          view.dispatch(
-            view.state.tr
-              .insertText(text, pos + index, pos + index + length)
-              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
-          )
-        },
-        onDelete: (index: number, length: number) => {
-          const pos = getPos() + 1
-          view.dispatch(
-            view.state.tr
-              .delete(pos + index, pos + index + length)
-              .setMeta(MonacoEditorTransactionMetaKey, this.clientID)
-          )
-        },
-        onLanguageChange: (language: string) => {
-          view.dispatch(
-            view.state.tr.setNodeMarkup(getPos(), undefined, {
-              ...node.attrs,
-              language,
-            })
-          )
-        },
-      }),
-      {
-        stopEvent: () => true,
-        ignoreMutation: () => true,
+    return ({ node, view, getPos }) => {
+      if (typeof getPos !== 'function') {
+        throw new Error(`Invalid getPos ${getPos}`)
       }
+
+      return new CodeBlockNodeView(node, view, getPos, this.clientID, this)
+    }
+  }
+}
+
+interface MonacoEditorInstanceManager {
+  setMonacoEditorInstanceByNode(node: ProsemirrorNode, instance: MonacoInstance): void
+  getMonacoEditorInstanceByNode(node: ProsemirrorNode): MonacoInstance | undefined
+  deleteMonacoEditorInstanceByNode(node: ProsemirrorNode): void
+}
+
+class CodeBlockNodeView extends NodeViewWithContent {
+  constructor(
+    node: ProsemirrorNode,
+    private view: EditorView,
+    private getPos: () => number,
+    private clientId: string | number,
+    private monacoInstanceManager: MonacoEditorInstanceManager
+  ) {
+    super(node)
+    this.dom.append(this.reactDOM)
+  }
+
+  dom = document.createElement('div')
+
+  reactDOM = document.createElement('div')
+
+  stopEvent = () => true
+
+  ignoreMutation = () => true
+
+  deselectNode = () => {}
+
+  component = lazyReactNodeView(
+    React.lazy(() => import('../../components/MonacoEditor')),
+    <_FallbackContainer>
+      <CupertinoActivityIndicator />
+    </_FallbackContainer>,
+    { lazy: true }
+  )
+
+  get language() {
+    return this.node.attrs.language
+  }
+
+  onInsert = (index: number, text: string) => {
+    const pos = this.getPos() + 1
+    this.view.dispatch(
+      this.view.state.tr
+        .insertText(text, pos + index)
+        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
+    )
+  }
+
+  onReplace = (index: number, length: number, text: string) => {
+    const pos = this.getPos() + 1
+    this.view.dispatch(
+      this.view.state.tr
+        .insertText(text, pos + index, pos + index + length)
+        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
+    )
+  }
+
+  onDelete = (index: number, length: number) => {
+    const pos = this.getPos() + 1
+    this.view.dispatch(
+      this.view.state.tr
+        .delete(pos + index, pos + index + length)
+        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
+    )
+  }
+
+  onLanguageChange = (language: string) => {
+    this.view.dispatch(
+      this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
+        ...this.node.attrs,
+        language,
+      })
+    )
+  }
+
+  private isAtFirstPosition = false
+
+  render() {
+    return (
+      <this.component
+        defaultValue={this.node.textContent}
+        language={this.language}
+        readOnly={!this.view.editable}
+        focused={this.selected}
+        clientID={this.clientId}
+        onInited={e => this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)}
+        onDestroyed={() => this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)}
+        onInsert={this.onInsert}
+        onReplace={this.onReplace}
+        onDelete={this.onDelete}
+        onLanguageChange={this.onLanguageChange}
+        onKeyDown={(_, editor) => {
+          this.isAtFirstPosition =
+            editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
+        }}
+        onKeyUp={e => {
+          // KeyCode.Backspace is 1
+          if (e.keyCode === 1 && this.isAtFirstPosition) {
+            this.view.dispatch(
+              this.view.state.tr.setNodeMarkup(
+                this.getPos(),
+                this.view.state.schema.nodes['paragraph']
+              )
+            )
+            this.view.focus()
+          }
+        }}
+      />
     )
   }
 }
