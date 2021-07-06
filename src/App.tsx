@@ -250,10 +250,10 @@ class _App extends React.PureComponent<{}> {
       new DropPasteFile({
         fileToNode: (view, file) => {
           if (imageBlock && file.type.startsWith('image/')) {
-            const node = view.state.schema.nodes[imageBlock.name].create({
-              src: null,
-              caption: file.name,
-            })
+            const node = view.state.schema.nodes[imageBlock.name].create(
+              { src: null },
+              view.state.schema.text(file.name)
+            )
             node.file = file
             return node
           } else if (videoBlock && file.type.startsWith('video/')) {
