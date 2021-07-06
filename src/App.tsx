@@ -255,12 +255,7 @@ class _App extends React.PureComponent<{}> {
           if (imageBlock && file.type.startsWith('image/')) {
             return imageBlock.create(view.state.schema, file)
           } else if (videoBlock && file.type.startsWith('video/')) {
-            const node = view.state.schema.nodes[videoBlock.name].create({
-              src: null,
-              caption: file.name,
-            })
-            node.file = file
-            return node
+            return videoBlock.create(view.state.schema, file)
           }
           return
         },

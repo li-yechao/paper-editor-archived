@@ -1,4 +1,3 @@
-import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { StylesProvider } from '@material-ui/core'
 import { throttle } from 'lodash'
@@ -105,104 +104,6 @@ export abstract class NodeViewWithContent extends NodeView {
   setSelection = () => {
     this.selected = true
     this._render()
-  }
-}
-
-export function createReactNodeViewCreator<P>(
-  Component: React.ComponentType<P>,
-  props: (args: {
-    node: ProsemirrorNode
-    view: EditorView
-    getPos: () => number
-    selected: boolean
-  }) => P,
-  options: {
-    createDom?: () => {
-      dom?: Element
-      reactDOM?: Element
-      contentDOM?: Element
-    }
-    stopEvent?: (event: Event) => boolean
-    ignoreMutation?: (
-      p:
-        | MutationRecord
-        | {
-            type: 'selection'
-            target: Element
-          }
-    ) => boolean
-  } = {}
-): NodeViewCreator {
-  return ({ node, view, getPos }) => {
-    if (typeof getPos !== 'function') {
-      throw new Error(`Invalid getPos ${getPos}`)
-    }
-
-    const {
-      dom = document.createElement('div'),
-      reactDOM = document.createElement('div'),
-      contentDOM,
-    } = options.createDom?.() ?? {}
-    dom.append(reactDOM)
-
-    if (contentDOM) {
-      // NOTE: Apply correct node type in safari when IME input.
-      const zero = document.createElement('span')
-      zero.innerText = '\u200b'
-      zero.classList.add(css`
-        position: absolute;
-        left: 0;
-        top: 0;
-      `)
-
-      dom.append(zero, contentDOM)
-    }
-
-    let selected = false
-
-    const render = () => {
-      ReactDOM.render(
-        <StylesProvider injectFirst>
-          <Component {...props({ node, view, getPos, selected })} />
-        </StylesProvider>,
-        reactDOM
-      )
-    }
-    render()
-
-    const nodeView: ProsemirrorNodeView = {
-      dom,
-      contentDOM,
-      update: updatedNode => {
-        if (updatedNode.type !== node.type) {
-          return false
-        }
-        node = updatedNode
-        render()
-        return true
-      },
-      stopEvent: options.stopEvent,
-      ignoreMutation: options.ignoreMutation,
-      destroy: () => {
-        ReactDOM.unmountComponentAtNode(reactDOM)
-      },
-    }
-
-    if (!contentDOM) {
-      nodeView.selectNode = () => {
-        if (view.editable) {
-          selected = true
-          render()
-        }
-      }
-      nodeView.setSelection = nodeView.selectNode
-      nodeView.deselectNode = () => {
-        selected = false
-        render()
-      }
-    }
-
-    return nodeView
   }
 }
 
