@@ -107,7 +107,7 @@ class TodoItemNodeView extends NodeView {
     return this.todoItemReadOnly
   }
 
-  render() {
+  component = () => {
     return (
       <_Checkbox
         checked={this.checked}

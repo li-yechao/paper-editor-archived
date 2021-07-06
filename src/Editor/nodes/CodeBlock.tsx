@@ -204,14 +204,6 @@ class CodeBlockNodeView extends NodeViewWithContent {
 
   deselectNode = () => {}
 
-  component = lazyReactNodeView(
-    React.lazy(() => import('../../components/MonacoEditor')),
-    <_FallbackContainer>
-      <CupertinoActivityIndicator />
-    </_FallbackContainer>,
-    { lazy: true }
-  )
-
   get language() {
     return this.node.attrs.language
   }
@@ -254,9 +246,17 @@ class CodeBlockNodeView extends NodeViewWithContent {
 
   private isAtFirstPosition = false
 
-  render() {
+  _component = lazyReactNodeView(
+    React.lazy(() => import('../../components/MonacoEditor')),
+    <_FallbackContainer>
+      <CupertinoActivityIndicator />
+    </_FallbackContainer>,
+    { lazy: true }
+  )
+
+  component = () => {
     return (
-      <this.component
+      <this._component
         defaultValue={this.node.textContent}
         language={this.language}
         readOnly={!this.view.editable}

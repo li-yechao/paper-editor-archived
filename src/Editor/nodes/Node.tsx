@@ -73,10 +73,15 @@ export abstract class NodeView implements ProsemirrorNodeView {
     ReactDOM.unmountComponentAtNode(this.reactDOM)
   }
 
-  abstract render(): React.ReactNode
+  abstract component: React.ComponentType
 
   _render() {
-    ReactDOM.render(<StylesProvider injectFirst>{this.render()}</StylesProvider>, this.reactDOM)
+    ReactDOM.render(
+      <StylesProvider injectFirst>
+        <this.component />
+      </StylesProvider>,
+      this.reactDOM
+    )
   }
 }
 
