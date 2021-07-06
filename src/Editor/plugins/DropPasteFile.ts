@@ -5,7 +5,7 @@ import { notEmpty } from '../../utils/array'
 import Extension from '../lib/Extension'
 
 export interface DropPasteFileOptions {
-  fileToNode: (view: EditorView, file: File) => ProsemirrorNode | undefined | void
+  fileToNode: (view: EditorView, file: File) => Promise<ProsemirrorNode> | null | undefined | void
 }
 
 export default class DropPasteFile extends Extension {
@@ -35,7 +35,9 @@ export default class DropPasteFile extends Extension {
                 return false
               }
 
-              view.dispatch(view.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0)))
+              Promise.all(nodes).then(nodes => {
+                view.dispatch(view.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0)))
+              })
 
               event.preventDefault()
               return true
@@ -58,7 +60,9 @@ export default class DropPasteFile extends Extension {
                 return false
               }
 
-              view.dispatch(view.state.tr.replaceWith(pos.pos, pos.pos, nodes))
+              Promise.all(nodes).then(nodes => {
+                view.dispatch(view.state.tr.replaceWith(pos.pos, pos.pos, nodes))
+              })
 
               event.preventDefault()
               return true

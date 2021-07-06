@@ -199,6 +199,9 @@ class _App extends React.PureComponent<{}> {
             getSrc: (hash: string) => {
               return `${ipfsGateway}/ipfs/${hash}`
             },
+            thumbnail: {
+              maxSize: 1024,
+            },
           }
         : undefined
 
@@ -250,12 +253,7 @@ class _App extends React.PureComponent<{}> {
       new DropPasteFile({
         fileToNode: (view, file) => {
           if (imageBlock && file.type.startsWith('image/')) {
-            const node = view.state.schema.nodes[imageBlock.name].create(
-              { src: null },
-              view.state.schema.text(file.name)
-            )
-            node.file = file
-            return node
+            return imageBlock.create(view.state.schema, file)
           } else if (videoBlock && file.type.startsWith('video/')) {
             const node = view.state.schema.nodes[videoBlock.name].create({
               src: null,
@@ -366,9 +364,11 @@ const _SpeedDial = ({ editor, manager }: { editor: React.RefObject<Editor>; mana
           const nodes = Array.from(input.files)
             .map(i => fileToNode(editorView, i))
             .filter(notEmpty)
-          editorView.dispatch(
-            editorView.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0))
-          )
+          Promise.all(nodes).then(nodes => {
+            editorView.dispatch(
+              editorView.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0))
+            )
+          })
         }
       } finally {
         document.body.removeChild(input)

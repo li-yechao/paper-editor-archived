@@ -1,22 +1,50 @@
 import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Keymap } from 'prosemirror-commands'
+import { Schema } from 'prosemirror-model'
 import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
+import { readAsDataURL, getImageThumbnail } from '../lib/image'
 import Node, { NodeView, NodeViewCreator } from './Node'
 
 export interface ImageBlockOptions {
   upload: (file: File) => Promise<string>
   getSrc: (src: string) => Promise<string> | string
+  thumbnail: {
+    maxSize: number
+  }
 }
 
 export default class ImageBlock extends Node {
   constructor(private options: ImageBlockOptions) {
     super()
+  }
+
+  async create(schema: Schema, file: File): Promise<ProsemirrorNode> {
+    return getImageThumbnail(file, { maxSize: this.options.thumbnail.maxSize })
+      .then(res =>
+        readAsDataURL(res.thumbnail).then(thumbnail => ({
+          ...res,
+          thumbnail,
+        }))
+      )
+      .then(({ thumbnail, naturalWidth, naturalHeight }) => {
+        const node = schema.nodes[this.name]!.create(
+          {
+            src: null,
+            thumbnail,
+            naturalWidth,
+            naturalHeight,
+          },
+          schema.text(file.name)
+        )
+        ;(node as any).file = file
+        return node
+      })
   }
 
   get name(): string {
@@ -25,7 +53,12 @@ export default class ImageBlock extends Node {
 
   get schema(): NodeSpec {
     return {
-      attrs: { src: { default: null } },
+      attrs: {
+        src: { default: null },
+        naturalWidth: { default: null },
+        naturalHeight: { default: null },
+        thumbnail: { default: null },
+      },
       content: 'text*',
       marks: '',
       group: 'block',
@@ -155,7 +188,7 @@ class ImageBlockNodeView extends NodeView {
     const _update = useUpdate()
     const update = useCallback(() => _mounted() && _update(), [])
 
-    const url = useRef<string>()
+    const url = useRef<string>(this.node.attrs.thumbnail)
     const loading = useRef(false)
 
     const setUrl = useCallback((u: string) => {
@@ -180,7 +213,6 @@ class ImageBlockNodeView extends NodeView {
       if (!file) {
         return
       }
-      setUrl(URL.createObjectURL(file))
       ;(async () => {
         setLoading(true)
         try {
@@ -196,14 +228,14 @@ class ImageBlockNodeView extends NodeView {
     }, [file])
 
     return (
-      <_Content>
-        <img src={url.current} />
-      </_Content>
+      <_Picture>
+        <img src={url.current} width={this.node.attrs.naturalWidth} />
+      </_Picture>
     )
   }
 }
 
-const _Content = styled.div`
+const _Picture = styled.picture`
   text-align: center;
 
   > img {
