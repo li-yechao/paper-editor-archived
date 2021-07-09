@@ -88,7 +88,7 @@ export abstract class NodeView implements ProsemirrorNodeView {
   }
 }
 
-export abstract class NodeViewWithContent extends NodeView {
+export abstract class NodeViewSelectable extends NodeView {
   constructor(node: ProsemirrorNode) {
     super(node)
   }
