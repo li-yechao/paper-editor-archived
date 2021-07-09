@@ -22,7 +22,7 @@ export default class Manager {
   }
 
   get nodeSpecs(): { [key: string]: NodeSpec } {
-    return this.nodes.reduce((res, i) => ({ ...res, [i.name]: i.schema }), {})
+    return this.nodes.reduce((res, i) => ({ ...res, [i.name]: i.schema, ...i.schema_extra }), {})
   }
 
   get marks(): Mark[] {

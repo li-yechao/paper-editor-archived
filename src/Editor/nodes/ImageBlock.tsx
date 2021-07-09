@@ -40,7 +40,7 @@ export default class ImageBlock extends Node {
             naturalWidth,
             naturalHeight,
           },
-          schema.text(file.name)
+          schema.nodes[this.contentName]!.create(undefined, schema.text(file.name))
         )
         ;(node as any).file = file
         return node
@@ -51,6 +51,10 @@ export default class ImageBlock extends Node {
     return 'image_block'
   }
 
+  get contentName(): string {
+    return `${this.name}_content`
+  }
+
   get schema(): NodeSpec {
     return {
       attrs: {
@@ -59,7 +63,7 @@ export default class ImageBlock extends Node {
         naturalHeight: { default: null },
         thumbnail: { default: null },
       },
-      content: 'text*',
+      content: this.contentName,
       marks: '',
       group: 'block',
       draggable: true,
@@ -84,18 +88,29 @@ export default class ImageBlock extends Node {
     }
   }
 
+  get schema_extra(): { [name: string]: NodeSpec } {
+    return {
+      [this.contentName]: {
+        content: 'text*',
+        marks: '',
+        parseDOM: [{ tag: 'div' }],
+        toDOM: () => ['div', 0],
+      },
+    }
+  }
+
   keymap({ type }: { type: NodeType }): Keymap {
     return {
       // NOTE: Move cursor to next node when input Enter.
       Enter: (state, dispatch) => {
         const { $from, $to } = state.selection
-        const node = $from.node()
-        if (!dispatch || node.type !== type || node !== $to.node()) {
+        const node = $from.node(-1)
+        if (!dispatch || node.type !== type || node !== $to.node(-1)) {
           return false
         }
         dispatch(
           state.tr.setSelection(
-            TextSelection.create(state.doc, $from.pos - $from.parentOffset + node.nodeSize)
+            TextSelection.create(state.doc, $from.pos - $from.parentOffset + node.nodeSize - 1)
           )
         )
         return true
@@ -104,7 +119,7 @@ export default class ImageBlock extends Node {
       Backspace: (state, dispatch) => {
         const { $from, $to, empty } = state.selection
         const node = $from.node()
-        if (!dispatch || !empty || node.type !== type || node !== $to.node()) {
+        if (!dispatch || !empty || node.type.name !== this.contentName || node !== $to.node()) {
           return false
         }
         if ($from.parentOffset === 0) {
@@ -162,7 +177,7 @@ class ImageBlockNodeView extends NodeView {
   }
 
   ignoreMutation = (e: MutationRecord | { type: 'selection'; target: Element }) => {
-    return e.type !== 'characterData'
+    return this.reactDOM.contains(e.target)
   }
 
   selectNode = () => {
@@ -172,7 +187,7 @@ class ImageBlockNodeView extends NodeView {
       setTimeout(() => {
         this.view.dispatch(
           this.view.state.tr.setSelection(
-            TextSelection.create(this.view.state.doc, this.getPos() + this.node.nodeSize - 1)
+            TextSelection.create(this.view.state.doc, this.getPos() + this.node.nodeSize - 2)
           )
         )
         this._render()
