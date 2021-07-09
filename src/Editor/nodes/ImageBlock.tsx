@@ -181,14 +181,14 @@ class ImageBlockNodeView extends NodeView {
   }
 
   component = () => {
-    const { src } = this.node.attrs
+    const { src, thumbnail } = this.node.attrs
     const file: File | undefined = (this.node as any).file
 
     const _mounted = useMountedState()
     const _update = useUpdate()
     const update = useCallback(() => _mounted() && _update(), [])
 
-    const url = useRef<string>(this.node.attrs.thumbnail)
+    const url = useRef<string>()
     const loading = useRef(false)
 
     const setUrl = useCallback((u: string) => {
@@ -229,7 +229,7 @@ class ImageBlockNodeView extends NodeView {
 
     return (
       <_Picture>
-        <img src={url.current} width={this.node.attrs.naturalWidth} />
+        <img src={url.current || thumbnail} width={this.node.attrs.naturalWidth} />
       </_Picture>
     )
   }

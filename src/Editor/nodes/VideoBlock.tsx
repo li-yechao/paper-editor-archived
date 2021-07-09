@@ -216,7 +216,7 @@ class VideoBlockNodeView extends NodeView {
   }
 
   component = () => {
-    const { src } = this.node.attrs
+    const { src, thumbnail } = this.node.attrs
     const file: File | undefined = (this.node as any).file
 
     const _mounted = useMountedState()
@@ -226,7 +226,6 @@ class VideoBlockNodeView extends NodeView {
     const player = useRef<HTMLVideoElement>(null)
     const playing = useRef(true)
     const url = useRef<string>()
-    const poster = useRef<string>(this.node.attrs.thumbnail)
     const loading = useRef(false)
 
     const setUrl = useCallback((u: string) => {
@@ -276,8 +275,6 @@ class VideoBlockNodeView extends NodeView {
               naturalHeight,
             })
           )
-          poster.current = thumbnailDataUrl
-          update()
 
           const newFile = await videoFile.convert('mp4')
           const src = await this.options.upload(newFile)
@@ -305,7 +302,7 @@ class VideoBlockNodeView extends NodeView {
     return (
       <_Content>
         <video
-          poster={poster.current}
+          poster={thumbnail}
           width={this.node.attrs.naturalWidth}
           ref={player}
           muted
