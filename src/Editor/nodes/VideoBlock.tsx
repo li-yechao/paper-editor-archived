@@ -17,6 +17,7 @@ import Node, { NodeView, NodeViewCreator } from './Node'
 export interface VideoBlockOptions {
   upload: (file: File) => Promise<string>
   getSrc: (src: string) => Promise<string> | string
+  getPoster: (poster: string) => Promise<string> | string
   thumbnail: {
     maxSize: number
   }
@@ -51,6 +52,7 @@ export default class VideoBlock extends Node {
         naturalWidth: { default: null },
         naturalHeight: { default: null },
         thumbnail: { default: null },
+        poster: { default: null },
       },
       content: this.contentName,
       marks: '',
@@ -234,7 +236,6 @@ class VideoBlockNodeView extends NodeView {
   }
 
   component = () => {
-    const { src, thumbnail } = this.node.attrs
     const file: File | undefined = (this.node as any).file
 
     const _mounted = useMountedState()
@@ -243,13 +244,9 @@ class VideoBlockNodeView extends NodeView {
 
     const player = useRef<HTMLVideoElement>(null)
     const playing = useRef(true)
-    const url = useRef<string>()
     const loading = useRef(false)
-
-    const setUrl = useCallback((u: string) => {
-      url.current = u
-      update()
-    }, [])
+    const src = useRef<string>()
+    const poster = useRef<string>()
 
     const setPlaying = useCallback((p: boolean) => {
       playing.current = p
@@ -263,11 +260,21 @@ class VideoBlockNodeView extends NodeView {
 
     useEffect(() => {
       ;(async () => {
-        if (src) {
-          setUrl(await this.options.getSrc(src))
+        if (this.node.attrs.src) {
+          src.current = await this.options.getSrc(this.node.attrs.src)
+          update()
         }
       })()
-    }, [src])
+    }, [this.node.attrs.src])
+
+    useEffect(() => {
+      ;(async () => {
+        if (this.node.attrs.poster) {
+          poster.current = await this.options.getPoster(this.node.attrs.poster)
+          update()
+        }
+      })()
+    }, [this.node.attrs.poster])
 
     useEffect(() => {
       if (!file) {
@@ -277,11 +284,10 @@ class VideoBlockNodeView extends NodeView {
         setLoading(true)
         try {
           const videoFile = new VideoFile(file)
+          const originalThumbnail = await videoFile.getThumbnail()
           const { thumbnail, naturalWidth, naturalHeight } = await getImageThumbnail(
-            await videoFile.getThumbnail(),
-            {
-              maxSize: this.options.thumbnail.maxSize,
-            }
+            originalThumbnail,
+            this.options.thumbnail
           )
 
           const thumbnailDataUrl = await readAsDataURL(thumbnail)
@@ -294,9 +300,16 @@ class VideoBlockNodeView extends NodeView {
             })
           )
 
+          const poster = await this.options.upload(originalThumbnail)
+          this.view.dispatch(
+            this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
+              ...this.node.attrs,
+              poster,
+            })
+          )
+
           const newFile = await videoFile.convert('mp4')
           const src = await this.options.upload(newFile)
-          setUrl(await this.options.getSrc(src))
           this.view.dispatch(
             this.view.state.tr.setNodeMarkup(this.getPos(), undefined, { ...this.node.attrs, src })
           )
@@ -320,13 +333,13 @@ class VideoBlockNodeView extends NodeView {
     return (
       <_Content>
         <video
-          poster={thumbnail}
+          poster={poster.current || this.node.attrs.thumbnail}
           width={this.node.attrs.naturalWidth}
           ref={player}
           muted
           autoPlay={playing.current}
           playsInline
-          src={url.current || undefined}
+          src={src.current || undefined}
           onEnded={() => setPlaying(false)}
           onPause={() => setPlaying(false)}
           onPlay={() => setPlaying(true)}
