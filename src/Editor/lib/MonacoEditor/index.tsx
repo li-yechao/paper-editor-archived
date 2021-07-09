@@ -10,21 +10,7 @@ export type MonacoInstance = {
   contentManager: EditorContentManager
 }
 
-const MonacoEditor = ({
-  defaultValue,
-  language,
-  readOnly,
-  focused,
-  clientID,
-  onInited,
-  onDestroyed,
-  onInsert,
-  onReplace,
-  onDelete,
-  onLanguageChange,
-  onKeyDown,
-  onKeyUp,
-}: {
+export interface MonacoEditorProps {
   defaultValue?: string
   language?: string
   readOnly?: boolean
@@ -38,7 +24,9 @@ const MonacoEditor = ({
   onLanguageChange?: (language: string) => void
   onKeyDown?: (e: IKeyboardEvent, editor: editor.ICodeEditor) => void
   onKeyUp?: (e: IKeyboardEvent, editor: editor.ICodeEditor) => void
-}) => {
+}
+
+const MonacoEditor = (props: MonacoEditorProps) => {
   const _isMounted = useMountedState()
   const _update = useUpdate()
   const update = useCallback(() => _isMounted() && _update(), [])
@@ -61,8 +49,8 @@ const MonacoEditor = ({
     matchMedia.addEventListener('change', themeListener)
 
     monacoEditor.current = editor.create(container.current, {
-      value: defaultValue,
-      language,
+      value: props.defaultValue,
+      language: props.language,
       theme,
       automaticLayout: true,
       minimap: {
@@ -74,16 +62,16 @@ const MonacoEditor = ({
         alwaysConsumeMouseWheel: false,
       },
       renderWhitespace: 'all',
-      readOnly,
+      readOnly: props.readOnly,
       scrollBeyondLastLine: false,
     })
 
     contentManager.current = new EditorContentManager({
       editor: monacoEditor.current,
-      remoteSourceId: clientID?.toString(),
-      onInsert,
-      onReplace,
-      onDelete,
+      remoteSourceId: props.clientID?.toString(),
+      onInsert: props.onInsert,
+      onReplace: props.onReplace,
+      onDelete: props.onDelete,
     })
 
     const updateHeight = () => {
@@ -100,7 +88,7 @@ const MonacoEditor = ({
 
     update()
 
-    onInited?.({ editor: monacoEditor.current, contentManager: contentManager.current })
+    props.onInited?.({ editor: monacoEditor.current, contentManager: contentManager.current })
 
     const model = monacoEditor.current.getModel()
     if (model) {
@@ -109,20 +97,20 @@ const MonacoEditor = ({
     }
 
     const keyDownDisposable =
-      onKeyDown &&
+      props.onKeyDown &&
       monacoEditor.current.onKeyDown(e => {
-        onKeyDown(e, monacoEditor.current!)
+        props.onKeyDown!(e, monacoEditor.current!)
       })
 
     const keyUpDisposable =
-      onKeyUp &&
+      props.onKeyUp &&
       monacoEditor.current.onKeyUp(e => {
-        onKeyUp(e, monacoEditor.current!)
+        props.onKeyUp!(e, monacoEditor.current!)
       })
 
     return () => {
       matchMedia.removeEventListener('change', themeListener)
-      onDestroyed?.()
+      props.onDestroyed?.()
       keyDownDisposable?.dispose()
       keyUpDisposable?.dispose()
       contentManager.current?.dispose()
@@ -134,25 +122,25 @@ const MonacoEditor = ({
     const e = monacoEditor.current
     if (e) {
       const hasFocus = e.hasWidgetFocus()
-      if (focused && !hasFocus) {
+      if (props.focused && !hasFocus) {
         e.focus()
-      } else if (!focused && hasFocus && document.activeElement instanceof HTMLElement) {
+      } else if (!props.focused && hasFocus && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur()
       }
     }
-  }, [focused, monacoEditor.current])
+  }, [props.focused, monacoEditor.current])
 
   useEffect(() => {
-    monacoEditor.current?.updateOptions({ readOnly })
-  }, [readOnly])
+    monacoEditor.current?.updateOptions({ readOnly: props.readOnly })
+  }, [props.readOnly])
 
   useEffect(() => {
     const model = monacoEditor.current?.getModel()
-    model && editor.setModelLanguage(model, language || 'plaintext')
-  }, [language])
+    model && editor.setModelLanguage(model, props.language || 'plaintext')
+  }, [props.language])
 
   const handleLanguageChange = useCallback((e: React.ChangeEvent<{ value: any }>) => {
-    onLanguageChange?.(e.target.value)
+    props.onLanguageChange?.(e.target.value)
   }, [])
 
   const handleLanguageMouseUp = useCallback((e: React.MouseEvent) => e.stopPropagation(), [])
@@ -162,8 +150,8 @@ const MonacoEditor = ({
       <_Select
         native
         variant="outlined"
-        value={language || 'plaintext'}
-        disabled={readOnly}
+        value={props.language || 'plaintext'}
+        disabled={props.readOnly}
         onChange={handleLanguageChange}
         onMouseUp={handleLanguageMouseUp}
       >

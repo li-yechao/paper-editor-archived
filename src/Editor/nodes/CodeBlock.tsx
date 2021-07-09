@@ -9,7 +9,7 @@ import { v4 } from 'uuid'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
 import Node, { lazyReactNodeView, NodeViewCreator, NodeViewWithContent } from './Node'
 
-type MonacoInstance = import('../../components/MonacoEditor').MonacoInstance
+type MonacoInstance = import('../lib/MonacoEditor').MonacoInstance
 
 const MonacoEditorTransactionMetaKey = 'MonacoEditorClientID'
 
@@ -246,8 +246,8 @@ class CodeBlockNodeView extends NodeViewWithContent {
 
   private isAtFirstPosition = false
 
-  _component = lazyReactNodeView(
-    React.lazy(() => import('../../components/MonacoEditor')),
+  private MonacoEditor = lazyReactNodeView(
+    React.lazy(() => import('../lib/MonacoEditor')),
     <_FallbackContainer>
       <CupertinoActivityIndicator />
     </_FallbackContainer>,
@@ -255,8 +255,10 @@ class CodeBlockNodeView extends NodeViewWithContent {
   )
 
   component = () => {
+    const { MonacoEditor } = this
+
     return (
-      <this._component
+      <MonacoEditor
         defaultValue={this.node.textContent}
         language={this.language}
         readOnly={!this.view.editable}
