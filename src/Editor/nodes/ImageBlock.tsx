@@ -103,17 +103,22 @@ export default class ImageBlock extends Node {
     return {
       // NOTE: Move cursor to next node when input Enter.
       Enter: (state, dispatch) => {
-        const { $from, $to } = state.selection
-        const node = $from.node(-1)
-        if (!dispatch || node.type !== type || node !== $to.node(-1)) {
-          return false
+        if (dispatch) {
+          const { $from, $to } = state.selection
+          const fromNode = $from.node($from.depth)
+          const toNode = $to.node($to.depth)
+          if (fromNode.type.name === this.contentName && fromNode === toNode) {
+            const endPos = $from.end($from.depth - 1)
+            const { tr } = state
+            dispatch(
+              tr
+                .insert(endPos, type.schema.nodes['paragraph'].createAndFill())
+                .setSelection(new TextSelection(tr.doc.resolve(endPos + 2)))
+            )
+            return true
+          }
         }
-        dispatch(
-          state.tr.setSelection(
-            TextSelection.create(state.doc, $from.pos - $from.parentOffset + node.nodeSize - 1)
-          )
-        )
-        return true
+        return false
       },
       // NOTE: Remove this node when backspace at first position.
       Backspace: (state, dispatch) => {
