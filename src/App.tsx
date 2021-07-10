@@ -186,15 +186,32 @@ class _App extends React.PureComponent<{}> {
     const uploadOptions =
       ipfsApi && ipfsGateway
         ? {
-            upload: async (file: File) => {
+            upload: async (file: File | File[]) => {
               const form = new FormData()
-              form.append('file', file)
-              const res = await fetch(`${ipfsApi}/api/v0/add`, {
+              const query: { [key: string]: string } = {}
+              if (Array.isArray(file)) {
+                query['recursive'] = 'true'
+                query['wrap-with-directory'] = 'true'
+                for (const f of file) {
+                  form.append(f.name, f, f.name)
+                }
+              } else {
+                form.append(file.name, file, file.name)
+              }
+
+              const qs = Object.entries(query)
+                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                .join('&')
+              const res = await fetch(`${ipfsApi}/api/v0/add?${qs}`, {
                 method: 'POST',
                 body: form,
               })
-              const json = await res.json()
-              return json.Hash
+              const texts = (await res.text()).split('\n').filter(i => !!i.trim())
+              const array = texts.map(i => JSON.parse(i))
+              if (array.length === 0) {
+                throw new Error('Invalid upload response []')
+              }
+              return array[array.length - 1].Hash
             },
             getSrc: (hash: string) => {
               return `${ipfsGateway}/ipfs/${hash}`

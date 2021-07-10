@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { createFFmpeg, FFmpeg } from '@ffmpeg/ffmpeg'
 import PauseRoundedIcon from '@material-ui/icons/PauseRounded'
 import PlayArrowRoundedIcon from '@material-ui/icons/PlayArrowRounded'
+import dashjs from 'dashjs'
 import { Keymap } from 'prosemirror-commands'
 import { Node as ProsemirrorNode, NodeSpec, NodeType, Schema } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
@@ -15,7 +16,7 @@ import { getImageThumbnail, readAsDataURL } from '../lib/image'
 import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface VideoBlockOptions {
-  upload: (file: File) => Promise<string>
+  upload: (file: File | File[]) => Promise<string>
   getSrc: (src: string) => Promise<string> | string
   getPoster: (poster: string) => Promise<string> | string
   thumbnail: {
@@ -53,6 +54,7 @@ export default class VideoBlock extends Node {
         naturalHeight: { default: null },
         thumbnail: { default: null },
         poster: { default: null },
+        dashArchiveSrc: { default: null },
       },
       content: this.contentName,
       marks: '',
@@ -152,33 +154,24 @@ class VideoFile {
     return this._ffmpeg
   }
 
-  async getThumbnail(): Promise<File> {
-    const thumbnailName = `${this.file.name}.jpeg`
-
-    await (await this.ffmpeg).run(
-      '-i',
-      this.file.name,
-      '-vframes',
-      '1',
-      '-f',
-      'image2',
-      thumbnailName
-    )
-
-    const output = await (await this.ffmpeg).FS('readFile', thumbnailName)
-
-    return new File([new Blob([output.buffer], { type: 'image/jpeg' })], thumbnailName, {
-      type: 'image/jpeg',
-    })
+  async poster(): Promise<File> {
+    const ffmpeg = await this.ffmpeg
+    const filename = 'poster.jpeg'
+    await ffmpeg.run('-i', this.file.name, '-vframes', '1', '-f', 'image2', filename)
+    return this.readFile(ffmpeg, filename, 'image/jpeg')
   }
 
-  async convert(type: 'mp4' = 'mp4'): Promise<File> {
-    const filename = `${this.file.name}.${type}`
-    await (await this.ffmpeg).run('-i', this.file.name, filename)
-    const output = await (await this.ffmpeg).FS('readFile', filename)
-    return new File([new Blob([output.buffer], { type: `video/${type}` })], filename, {
-      type: `video/${type}`,
-    })
+  async dash() {
+    const ffmpeg = await this.ffmpeg
+    ffmpeg.FS('mkdir' as any, 'dash')
+    await ffmpeg.run('-i', this.file.name, '-f', 'dash', 'dash/index.mpd')
+    const files: string[] = ffmpeg.FS('readdir' as any, 'dash') as string[]
+    return files.filter(i => i !== '.' && i !== '..').map(i => this.readFile(ffmpeg, `dash/${i}`))
+  }
+
+  private readFile(ffmpeg: FFmpeg, filename: string, type?: string): File {
+    const file = ffmpeg.FS('readFile', filename)
+    return new File([new Blob([file.buffer], { type })], filename, { type })
   }
 }
 
@@ -246,6 +239,7 @@ class VideoBlockNodeView extends NodeViewReact {
     const playing = useRef(true)
     const loading = useRef(false)
     const src = useRef<string>()
+    const dashSrc = useRef<string>()
     const poster = useRef<string>()
 
     const setPlaying = useCallback((p: boolean) => {
@@ -277,6 +271,18 @@ class VideoBlockNodeView extends NodeViewReact {
     }, [this.node.attrs.poster])
 
     useEffect(() => {
+      ;(async () => {
+        const { dashArchiveSrc } = this.node.attrs
+        if (dashArchiveSrc) {
+          const s = await this.options.getSrc(dashArchiveSrc)
+          dashSrc.current = `${s}/dash/index.mpd`
+          poster.current = `${s}/poster.jpeg`
+          update()
+        }
+      })()
+    }, [this.node.attrs.dashArchiveSrc])
+
+    useEffect(() => {
       if (!file) {
         return
       }
@@ -284,34 +290,29 @@ class VideoBlockNodeView extends NodeViewReact {
         setLoading(true)
         try {
           const videoFile = new VideoFile(file)
-          const originalThumbnail = await videoFile.getThumbnail()
+
+          const poster = await videoFile.poster()
           const { thumbnail, naturalWidth, naturalHeight } = await getImageThumbnail(
-            originalThumbnail,
+            poster,
             this.options.thumbnail
           )
-
-          const thumbnailDataUrl = await readAsDataURL(thumbnail)
           this.view.dispatch(
             this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
               ...this.node.attrs,
-              thumbnail: thumbnailDataUrl,
+              thumbnail: await readAsDataURL(thumbnail),
               naturalWidth,
               naturalHeight,
             })
           )
 
-          const poster = await this.options.upload(originalThumbnail)
+          const dash = await videoFile.dash()
+          const filenameFile = new File([new Blob([file.name], { type: 'text/plain' })], 'filename')
+          const dashArchiveSrc = await this.options.upload([filenameFile, poster, ...dash, file])
           this.view.dispatch(
             this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
               ...this.node.attrs,
-              poster,
+              dashArchiveSrc,
             })
-          )
-
-          const newFile = await videoFile.convert('mp4')
-          const src = await this.options.upload(newFile)
-          this.view.dispatch(
-            this.view.state.tr.setNodeMarkup(this.getPos(), undefined, { ...this.node.attrs, src })
           )
         } finally {
           setLoading(false)
@@ -327,23 +328,37 @@ class VideoBlockNodeView extends NodeViewReact {
       } else {
         player.current?.play()
       }
-      setPlaying(!playing)
+      setPlaying(!playing.current)
     }, [])
 
     return (
       <_Content>
-        <video
-          poster={poster.current || this.node.attrs.thumbnail}
-          width={this.node.attrs.naturalWidth}
-          ref={player}
-          muted
-          autoPlay={playing.current}
-          playsInline
-          src={src.current || undefined}
-          onEnded={() => setPlaying(false)}
-          onPause={() => setPlaying(false)}
-          onPlay={() => setPlaying(true)}
-        />
+        {dashSrc.current ? (
+          <DashPlayer
+            poster={poster.current || this.node.attrs.thumbnail}
+            width={this.node.attrs.naturalWidth}
+            muted
+            autoPlay={playing.current}
+            playsInline
+            src={dashSrc.current}
+            onEnded={() => setPlaying(false)}
+            onPause={() => setPlaying(false)}
+            onPlay={() => setPlaying(true)}
+          />
+        ) : (
+          <video
+            poster={poster.current || this.node.attrs.thumbnail}
+            width={this.node.attrs.naturalWidth}
+            ref={player}
+            muted
+            autoPlay={playing.current}
+            playsInline
+            src={src.current || undefined}
+            onEnded={() => setPlaying(false)}
+            onPause={() => setPlaying(false)}
+            onPlay={() => setPlaying(true)}
+          />
+        )}
 
         <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={playPause}>
           {playing.current ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
@@ -357,6 +372,43 @@ class VideoBlockNodeView extends NodeViewReact {
       </_Content>
     )
   }
+}
+
+const DashPlayer = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
+  const video = useRef<HTMLVideoElement>(null)
+  const player = useRef<dashjs.MediaPlayerClass>()
+
+  const initPlayer = useCallback((src?: string, autoPlay?: boolean) => {
+    player.current?.destroy()
+    player.current = dashjs.MediaPlayer().create()
+    player.current.initialize(video.current!, src, autoPlay)
+  }, [])
+
+  useEffect(() => {
+    initPlayer(props.src, props.autoPlay)
+    return () => player.current?.destroy()
+  }, [props.src])
+
+  useEffect(() => {
+    if (props.autoPlay) {
+      if (video.current?.ended) {
+        initPlayer(props.src, props.autoPlay)
+      }
+      player.current?.play()
+    } else {
+      player.current?.pause()
+    }
+  }, [props.autoPlay])
+
+  return (
+    <video
+      ref={video}
+      {...props}
+      onEnded={e => {
+        props.onEnded?.(e)
+      }}
+    />
+  )
 }
 
 const _Content = styled.div`
