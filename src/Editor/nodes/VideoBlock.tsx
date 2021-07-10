@@ -143,6 +143,12 @@ enum VideoFileStatus {
   ConvertDASH,
 }
 
+interface Meta {
+  codec: string
+  format?: string
+  profile?: string
+}
+
 class VideoFile extends StrictEventEmitter<{}, {}, { progress: (e: VideoFile) => void }> {
   constructor(public file: File) {
     super()
@@ -159,6 +165,9 @@ class VideoFile extends StrictEventEmitter<{}, {}, { progress: (e: VideoFile) =>
   get status() {
     return this.__status
   }
+
+  private _videoMetas: Meta[] = []
+  private _audioMetas: Meta[] = []
 
   private _duration?: number
   get duration() {
@@ -191,6 +200,21 @@ class VideoFile extends StrictEventEmitter<{}, {}, { progress: (e: VideoFile) =>
           await ffmpeg.load()
           const buffer = await this.file.arrayBuffer()
           ffmpeg.FS('writeFile', this.file.name, new Uint8Array(buffer, 0, buffer.byteLength))
+
+          // Get video metas.
+          ffmpeg.setLogger(log => {
+            const video = log.message.match(
+              /stream\s+#0:0\S+\s+video\:\s+(?<codec>\w+)(\s+\((?<profile>\w+)\))?(\s+\((?<format>\w+).*\))?,/i
+            )?.groups
+            const audio = log.message.match(
+              /stream\s+#\d+:\d+\S+\s+audio\:\s+(?<codec>\w+)(\s+\((?<profile>\w+)\))?(\s+\((?<format>\w+).*\))?,/i
+            )?.groups
+            video && this._videoMetas.push(video as any)
+            audio && this._audioMetas.push(audio as any)
+          })
+          await ffmpeg.run('-i', this.file.name)
+          ffmpeg.setLogger(() => {})
+
           ffmpeg.setProgress(p => {
             const { duration, time, ratio } = p as any
             if (typeof duration === 'number' && duration >= 0) {
