@@ -43,15 +43,11 @@ export default abstract class Node extends Extension {
 }
 
 export abstract class NodeView implements ProsemirrorNodeView {
-  constructor(public node: ProsemirrorNode) {
-    setTimeout(() => this._render())
-  }
-
   abstract dom: HTMLElement
 
-  abstract reactDOM: HTMLElement
-
   contentDOM?: HTMLElement
+
+  update?: (node: ProsemirrorNode, decorations: Decoration[]) => boolean
 
   selectNode?: () => void
 
@@ -63,7 +59,18 @@ export abstract class NodeView implements ProsemirrorNodeView {
 
   ignoreMutation?: (p: MutationRecord | { type: 'selection'; target: Element }) => boolean
 
-  update(updatedNode: ProsemirrorNode, _decorations: Decoration[]) {
+  destroy?: () => void
+}
+
+export abstract class NodeViewReact extends NodeView {
+  constructor(public node: ProsemirrorNode) {
+    super()
+    setTimeout(() => this._render())
+  }
+
+  abstract reactDOM: HTMLElement
+
+  update = (updatedNode: ProsemirrorNode, _decorations: Decoration[]) => {
     if (updatedNode.type !== this.node.type) {
       return false
     }
@@ -72,7 +79,7 @@ export abstract class NodeView implements ProsemirrorNodeView {
     return true
   }
 
-  destroy() {
+  destroy = () => {
     ReactDOM.unmountComponentAtNode(this.reactDOM)
   }
 
@@ -88,7 +95,7 @@ export abstract class NodeView implements ProsemirrorNodeView {
   }
 }
 
-export abstract class NodeViewSelectable extends NodeView {
+export abstract class NodeViewReactSelectable extends NodeViewReact {
   constructor(node: ProsemirrorNode) {
     super(node)
   }

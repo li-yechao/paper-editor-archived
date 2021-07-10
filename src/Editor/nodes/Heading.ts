@@ -1,7 +1,7 @@
 import { css } from '@emotion/css'
 import { InputRule, textblockTypeInputRule } from 'prosemirror-inputrules'
 import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
-import Node, { NodeView, NodeViewCreator } from './Node'
+import Node, { NodeViewCreator, NodeView } from './Node'
 
 export default class Heading extends Node {
   get name(): string {
@@ -44,7 +44,7 @@ export default class Heading extends Node {
 
 class HeadingNodeView extends NodeView {
   constructor(node: ProsemirrorNode) {
-    super(node)
+    super()
     this.dom = document.createElement(`h${node.attrs.level}`)
 
     this.dom.classList.add(css`
@@ -63,8 +63,5 @@ class HeadingNodeView extends NodeView {
   }
 
   dom: HTMLElement
-  reactDOM = document.createElement('span')
   contentDOM = document.createElement('div')
-
-  component = () => null
 }

@@ -9,7 +9,7 @@ import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { readAsDataURL, getImageThumbnail } from '../lib/image'
-import Node, { NodeView, NodeViewCreator } from './Node'
+import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface ImageBlockOptions {
   upload: (file: File) => Promise<string>
@@ -142,7 +142,7 @@ export default class ImageBlock extends Node {
   }
 }
 
-class ImageBlockNodeView extends NodeView {
+class ImageBlockNodeView extends NodeViewReact {
   constructor(
     node: ProsemirrorNode,
     private view: EditorView,

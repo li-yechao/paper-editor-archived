@@ -6,7 +6,7 @@ import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
 import { splitListItem } from 'prosemirror-schema-list'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
-import Node, { NodeView, NodeViewCreator } from './Node'
+import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export default class TodoItem extends Node {
   constructor(private options: { readonly todoItemReadOnly?: boolean } = {}) {
@@ -61,7 +61,7 @@ export default class TodoItem extends Node {
   }
 }
 
-class TodoItemNodeView extends NodeView {
+class TodoItemNodeView extends NodeViewReact {
   constructor(
     node: ProsemirrorNode,
     private view: EditorView,

@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
 import { getImageThumbnail, readAsDataURL } from '../lib/image'
-import Node, { NodeView, NodeViewCreator } from './Node'
+import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface VideoBlockOptions {
   upload: (file: File) => Promise<string>
@@ -182,7 +182,7 @@ class VideoFile {
   }
 }
 
-class VideoBlockNodeView extends NodeView {
+class VideoBlockNodeView extends NodeViewReact {
   constructor(
     node: ProsemirrorNode,
     private view: EditorView,

@@ -7,7 +7,7 @@ import { EditorView } from 'prosemirror-view'
 import React from 'react'
 import { v4 } from 'uuid'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
-import Node, { lazyReactNodeView, NodeViewCreator, NodeViewSelectable } from './Node'
+import Node, { lazyReactNodeView, NodeViewCreator, NodeViewReactSelectable } from './Node'
 
 type MonacoInstance = import('../lib/MonacoEditor').MonacoInstance
 
@@ -182,7 +182,7 @@ interface MonacoEditorInstanceManager {
   deleteMonacoEditorInstanceByNode(node: ProsemirrorNode): void
 }
 
-class CodeBlockNodeView extends NodeViewSelectable {
+class CodeBlockNodeView extends NodeViewReactSelectable {
   constructor(
     node: ProsemirrorNode,
     private view: EditorView,
