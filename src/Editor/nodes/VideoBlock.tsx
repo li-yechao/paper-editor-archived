@@ -1,6 +1,7 @@
 import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { createFFmpeg, FFmpeg } from '@ffmpeg/ffmpeg'
+import { Typography } from '@material-ui/core'
 import PauseRoundedIcon from '@material-ui/icons/PauseRounded'
 import PlayArrowRoundedIcon from '@material-ui/icons/PlayArrowRounded'
 import dashjs from 'dashjs'
@@ -12,6 +13,7 @@ import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
+import { StrictEventEmitter } from '../../utils/typed-events'
 import { getImageThumbnail, readAsDataURL } from '../lib/image'
 import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
@@ -135,38 +137,121 @@ export default class VideoBlock extends Node {
   }
 }
 
-class VideoFile {
-  constructor(public file: File) {}
+enum VideoFileStatus {
+  PrepareFFmpeg,
+  ExtractPoster,
+  ConvertDASH,
+}
+
+class VideoFile extends StrictEventEmitter<{}, {}, { progress: (e: VideoFile) => void }> {
+  constructor(public file: File) {
+    super()
+  }
+
+  private inProgress?: Promise<any>
+
+  private __status?: VideoFileStatus
+  private set _status(status: VideoFileStatus | undefined) {
+    this.__status = status
+    this._ratio = undefined
+    this._time = undefined
+  }
+  get status() {
+    return this.__status
+  }
+
+  private _duration?: number
+  get duration() {
+    return this._duration
+  }
+
+  private _time?: number
+  get time() {
+    return this._time
+  }
+
+  private __ratio?: number
+  private set _ratio(ratio: number | undefined) {
+    this.__ratio = ratio
+    this.emitReserved('progress', this)
+  }
+  get ratio() {
+    return this.__ratio
+  }
 
   private _ffmpeg?: Promise<FFmpeg>
   private get ffmpeg(): Promise<FFmpeg> {
     if (!this._ffmpeg) {
-      this._ffmpeg = new Promise(async resolve => {
-        const ffmpeg = createFFmpeg({
-          corePath: './static/ffmpeg-core/ffmpeg-core.js',
-        })
-        await ffmpeg.load()
-        const buffer = await this.file.arrayBuffer()
-        ffmpeg.FS('writeFile', this.file.name, new Uint8Array(buffer, 0, buffer.byteLength))
-        resolve(ffmpeg)
-      })
+      this._ffmpeg = (async () => {
+        try {
+          const ffmpeg = createFFmpeg({
+            corePath: './static/ffmpeg-core/ffmpeg-core.js',
+          })
+          this._status = VideoFileStatus.PrepareFFmpeg
+          await ffmpeg.load()
+          const buffer = await this.file.arrayBuffer()
+          ffmpeg.FS('writeFile', this.file.name, new Uint8Array(buffer, 0, buffer.byteLength))
+          ffmpeg.setProgress(p => {
+            const { duration, time, ratio } = p as any
+            if (typeof duration === 'number' && duration >= 0) {
+              this._duration = Number(duration.toFixed(2))
+            }
+            if (typeof time === 'number' && time >= 0) {
+              this._time = Number(time.toFixed(2))
+            }
+            if (typeof ratio === 'number' && ratio >= 0) {
+              this._ratio = Number(ratio.toFixed(4))
+            }
+          })
+          return ffmpeg
+        } finally {
+          this._status = undefined
+        }
+      })()
     }
     return this._ffmpeg
   }
 
   async poster(): Promise<File> {
-    const ffmpeg = await this.ffmpeg
-    const filename = 'poster.jpeg'
-    await ffmpeg.run('-i', this.file.name, '-vframes', '1', '-f', 'image2', filename)
-    return this.readFile(ffmpeg, filename, 'image/jpeg')
+    await this.inProgress
+    const promise = (async () => {
+      try {
+        const ffmpeg = await this.ffmpeg
+        const filename = 'poster.jpeg'
+        this._status = VideoFileStatus.ExtractPoster
+        await ffmpeg.run('-i', this.file.name, '-vframes', '1', '-f', 'image2', filename)
+        return this.readFile(ffmpeg, filename, 'image/jpeg')
+      } finally {
+        this._status = undefined
+      }
+    })()
+    this.inProgress = promise
+    return promise
   }
 
   async dash() {
-    const ffmpeg = await this.ffmpeg
-    ffmpeg.FS('mkdir' as any, 'dash')
-    await ffmpeg.run('-i', this.file.name, '-f', 'dash', 'dash/index.mpd')
-    const files: string[] = ffmpeg.FS('readdir' as any, 'dash') as string[]
-    return files.filter(i => i !== '.' && i !== '..').map(i => this.readFile(ffmpeg, `dash/${i}`))
+    await this.inProgress
+    const promise = (async () => {
+      try {
+        const ffmpeg = await this.ffmpeg
+        this._status = VideoFileStatus.ConvertDASH
+        ffmpeg.FS('mkdir' as any, 'dash')
+        await ffmpeg.run('-i', this.file.name, '-f', 'dash', 'dash/index.mpd')
+        const files: string[] = ffmpeg.FS('readdir' as any, 'dash') as string[]
+        return files
+          .filter(i => i !== '.' && i !== '..')
+          .map(i => this.readFile(ffmpeg, `dash/${i}`))
+      } finally {
+        this._status = undefined
+      }
+    })()
+    this.inProgress = promise
+    return promise
+  }
+
+  destroy() {
+    this.removeAllListeners()
+    this._ffmpeg = undefined
   }
 
   private readFile(ffmpeg: FFmpeg, filename: string, type?: string): File {
@@ -241,6 +326,7 @@ class VideoBlockNodeView extends NodeViewReact {
     const src = useRef<string>()
     const dashSrc = useRef<string>()
     const poster = useRef<string>()
+    const videoFile = useRef<VideoFile>()
 
     const setPlaying = useCallback((p: boolean) => {
       playing.current = p
@@ -288,10 +374,10 @@ class VideoBlockNodeView extends NodeViewReact {
       }
       ;(async () => {
         setLoading(true)
+        videoFile.current = new VideoFile(file)
         try {
-          const videoFile = new VideoFile(file)
-
-          const poster = await videoFile.poster()
+          videoFile.current.on('progress', update)
+          const poster = await videoFile.current.poster()
           const { thumbnail, naturalWidth, naturalHeight } = await getImageThumbnail(
             poster,
             this.options.thumbnail
@@ -305,7 +391,7 @@ class VideoBlockNodeView extends NodeViewReact {
             })
           )
 
-          const dash = await videoFile.dash()
+          const dash = await videoFile.current.dash()
           const filenameFile = new File([new Blob([file.name], { type: 'text/plain' })], 'filename')
           const dashArchiveSrc = await this.options.upload([filenameFile, poster, ...dash, file])
           this.view.dispatch(
@@ -315,6 +401,8 @@ class VideoBlockNodeView extends NodeViewReact {
             })
           )
         } finally {
+          videoFile.current.destroy()
+          videoFile.current = undefined
           setLoading(false)
         }
       })()
@@ -367,11 +455,31 @@ class VideoBlockNodeView extends NodeViewReact {
         {loading.current && (
           <_Loading>
             <_CupertinoActivityIndicator />
+            <ProgressText status={videoFile.current?.status} ratio={videoFile.current?.ratio} />
           </_Loading>
         )}
       </_Content>
     )
   }
+}
+
+const ProgressText = ({ status, ratio }: Pick<VideoFile, 'status' | 'ratio'>) => {
+  if (status === undefined) {
+    return null
+  }
+
+  const statusText = {
+    [VideoFileStatus.PrepareFFmpeg]: '加载解码器...',
+    [VideoFileStatus.ExtractPoster]: '提取封面...',
+    [VideoFileStatus.ConvertDASH]: '正在转码...',
+  }[status]
+
+  return (
+    <Typography variant="caption">
+      {statusText}
+      {ratio !== undefined && Number((ratio * 100).toFixed(4)) + '%'}
+    </Typography>
+  )
 }
 
 const DashPlayer = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
@@ -451,6 +559,7 @@ const _Loading = styled.div`
   margin: auto;
   z-index: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background-color: rgba(128, 128, 128, 0.5);
@@ -460,4 +569,5 @@ const _CupertinoActivityIndicator = styled(CupertinoActivityIndicator)`
   width: 56px;
   height: 56px;
   color: currentColor;
+  margin: 0;
 `
