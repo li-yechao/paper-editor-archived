@@ -7,6 +7,7 @@ import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { readAsDataURL, getImageThumbnail } from '../lib/image'
 import Node, { NodeViewReact, NodeViewCreator } from './Node'
@@ -157,9 +158,7 @@ class ImageBlockNodeView extends NodeViewReact {
     super(node)
     this.reactDOM.contentEditable = 'false'
     this.dom.classList.add(css`
-      > figcaption {
-        text-align: center;
-      }
+      text-align: center;
     `)
     this.dom.append(this.reactDOM, this.contentDOM)
   }
@@ -249,16 +248,46 @@ class ImageBlockNodeView extends NodeViewReact {
 
     return (
       <_Picture>
-        <img src={url.current || thumbnail} width={this.node.attrs.naturalWidth} />
+        <_Img thumbnail={thumbnail} src={url.current} width={this.node.attrs.naturalWidth} />
       </_Picture>
     )
   }
 }
 
-const _Picture = styled.picture`
-  text-align: center;
+const _Img = ({
+  src,
+  thumbnail,
+  lazy,
+  ...props
+}: {
+  thumbnail?: string
+  lazy?: boolean
+} & React.ImgHTMLAttributes<HTMLImageElement>) => {
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [url, setUrl] = useState(thumbnail)
 
-  > img {
+  useEffect(() => {
+    if (!lazy) {
+      setTimeout(() => {
+        src && setUrl(src)
+      }, 100)
+    } else {
+      const observer = new IntersectionObserver(entries => {
+        if (entries[0]?.isIntersecting) {
+          setTimeout(() => {
+            src && setUrl(src)
+          }, 100)
+        }
+      })
+      imgRef.current && observer.observe(imgRef.current)
+    }
+  }, [src])
+
+  return <img ref={imgRef} {...props} src={url} />
+}
+
+const _Picture = styled.picture`
+  img {
     vertical-align: middle;
     object-fit: contain;
     max-width: 100%;
