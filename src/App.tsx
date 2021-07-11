@@ -57,7 +57,6 @@ export interface Config {
 
 export type CollabConfig = {
   socketIoUri: string
-  userId: string
   paperId: string
   accessToken: string
 }
@@ -139,8 +138,11 @@ class _App extends React.PureComponent<{}> {
         return
       }
 
-      const { socketIoUri, accessToken, userId, paperId } = this.config.collab
-      this.collabClient = io(socketIoUri, { query: { accessToken, userId, paperId } })
+      const { socketIoUri, accessToken, paperId } = this.config.collab
+      this.collabClient = io(socketIoUri, {
+        query: { paperId },
+        extraHeaders: { authorization: `Bearer ${accessToken}` },
+      })
       this.collabClient.on('paper', ({ version, doc, clientID }) => {
         this.initManager({ doc, collab: { version, clientID } })
       })
@@ -433,15 +435,13 @@ if (process.env.NODE_ENV === 'development') {
   const search = new URLSearchParams(window.location.search)
   const socketIoUri = search.get('socketIoUri')
   const accessToken = search.get('accessToken')
-  const userId = search.get('userId')
   const paperId = search.get('paperId')
 
   const collab: CollabConfig | undefined =
-    socketIoUri && accessToken && userId && paperId
+    socketIoUri && accessToken && paperId
       ? {
           socketIoUri,
           accessToken,
-          userId,
           paperId,
         }
       : undefined
