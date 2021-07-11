@@ -19,7 +19,7 @@ function getMarksBetween(start: number, end: number, state: EditorState) {
   return marks
 }
 
-export default function (
+export default function markInputRule(
   regexp: RegExp,
   markType: MarkType,
   getAttrs?: (match: string[]) => Record<string, unknown>
