@@ -218,9 +218,6 @@ class _App extends React.PureComponent<{}> {
             getSrc: (hash: string) => {
               return `${ipfsGateway}/ipfs/${hash}`
             },
-            getPoster: (hash: string) => {
-              return `${ipfsGateway}/ipfs/${hash}`
-            },
             thumbnail: {
               maxSize: 1024,
             },

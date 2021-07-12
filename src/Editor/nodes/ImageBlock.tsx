@@ -7,9 +7,9 @@ import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
-import { useState } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { readAsDataURL, getImageThumbnail } from '../lib/image'
+import { LazyComponent } from '../lib/LazyComponent'
 import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface ImageBlockOptions {
@@ -18,6 +18,13 @@ export interface ImageBlockOptions {
   thumbnail: {
     maxSize: number
   }
+}
+
+export interface ImageBlockAttrs {
+  src?: string | null
+  naturalWidth?: number | null
+  naturalHeight?: number | null
+  thumbnail?: string | null
 }
 
 export default class ImageBlock extends Node {
@@ -72,17 +79,20 @@ export default class ImageBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="image_block"]',
-          getAttrs: dom => {
-            const img = (dom as HTMLElement).getElementsByTagName('img')[0]
-            return { src: img?.getAttribute('data-src') }
-          },
+          getAttrs: dom => (dom as HTMLElement).dataset,
         },
       ],
       toDOM: node => {
         return [
           'figure',
-          { 'data-type': 'image_block' },
-          ['img', { 'data-src': node.attrs.src }],
+          {
+            'data-type': 'image_block',
+            'data-src': node.attrs.src,
+            'data-thumbnail': node.attrs.thumbnail,
+            'data-natural-width': node.attrs.naturalWidth,
+            'data-natural-height': node.attrs.naturalHeight,
+          },
+          ['img'],
           ['figcaption', 0],
         ]
       },
@@ -171,6 +181,10 @@ class ImageBlockNodeView extends NodeViewReact {
 
   private isDragging = false
 
+  private get attrs(): ImageBlockAttrs {
+    return this.node.attrs
+  }
+
   stopEvent = (e: Event) => {
     if (e.type === 'dragstart') {
       this.isDragging = true
@@ -199,91 +213,79 @@ class ImageBlockNodeView extends NodeViewReact {
     }
   }
 
-  component = () => {
-    const { src, thumbnail } = this.node.attrs
-    const file: File | undefined = (this.node as any).file
+  private get aspectRatio() {
+    const { naturalWidth, naturalHeight } = this.attrs
+    if (naturalWidth && naturalHeight) {
+      return `${naturalWidth} / ${naturalHeight}`
+    }
+    return undefined
+  }
 
+  component = () => {
     const _mounted = useMountedState()
     const _update = useUpdate()
     const update = useCallback(() => _mounted() && _update(), [])
 
-    const url = useRef<string>()
-    const loading = useRef(false)
+    const file: File | undefined = (this.node as any).file
 
-    const setUrl = useCallback((u: string) => {
-      url.current = u
+    const state = useRef<{
+      loading: boolean
+      src?: string
+      visible: boolean
+    }>({
+      loading: false,
+      src: this.attrs.thumbnail ?? undefined,
+      visible: false,
+    })
+    const setState = useCallback((s: Partial<typeof state.current>) => {
+      state.current = { ...state.current, ...s }
       update()
     }, [])
 
-    const setLoading = useCallback((l: boolean) => {
-      loading.current = l
-      update()
+    const onVisibleChange = useCallback(async (visible: boolean) => {
+      if (!visible) {
+        setState({ visible })
+        return
+      }
+      const src = (this.attrs.src && (await this.options.getSrc(this.attrs.src))) ?? undefined
+      setState({
+        src,
+        visible,
+      })
     }, [])
-
-    useEffect(() => {
-      ;(async () => {
-        if (src) {
-          setUrl(await this.options.getSrc(src))
-        }
-      })()
-    }, [src])
 
     useEffect(() => {
       if (!file) {
         return
       }
       ;(async () => {
-        setLoading(true)
+        setState({ loading: true })
         try {
           const src = await this.options.upload(file)
-          setUrl(await this.options.getSrc(src))
           this.view.dispatch(
-            this.view.state.tr.setNodeMarkup(this.getPos(), undefined, { ...this.node.attrs, src })
+            this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
+              ...this.attrs,
+              src,
+            })
           )
         } finally {
-          setLoading(false)
+          setState({ loading: false })
         }
       })()
     }, [file])
 
     return (
       <_Picture>
-        <_Img thumbnail={thumbnail} src={url.current} width={this.node.attrs.naturalWidth} />
+        <LazyComponent
+          component="img"
+          onVisibleChange={onVisibleChange}
+          src={state.current.src}
+          width={this.attrs.naturalWidth ?? undefined}
+          style={{ aspectRatio: this.aspectRatio }}
+        />
       </_Picture>
     )
   }
-}
-
-const _Img = ({
-  src,
-  thumbnail,
-  lazy,
-  ...props
-}: {
-  thumbnail?: string
-  lazy?: boolean
-} & React.ImgHTMLAttributes<HTMLImageElement>) => {
-  const imgRef = useRef<HTMLImageElement>(null)
-  const [url, setUrl] = useState(thumbnail)
-
-  useEffect(() => {
-    if (!lazy) {
-      setTimeout(() => {
-        src && setUrl(src)
-      }, 100)
-    } else {
-      const observer = new IntersectionObserver(entries => {
-        if (entries[0]?.isIntersecting) {
-          setTimeout(() => {
-            src && setUrl(src)
-          }, 100)
-        }
-      })
-      imgRef.current && observer.observe(imgRef.current)
-    }
-  }, [src])
-
-  return <img ref={imgRef} {...props} src={url} />
 }
 
 const _Picture = styled.picture`

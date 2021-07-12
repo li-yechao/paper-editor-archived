@@ -1,14 +1,10 @@
-import styled from '@emotion/styled'
 import { StylesProvider } from '@material-ui/core'
 import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { NodeSpec, Node as ProsemirrorNode, NodeType, Schema } from 'prosemirror-model'
 import { Decoration, EditorView, NodeView as ProsemirrorNodeView } from 'prosemirror-view'
-import React, { useEffect } from 'react'
-import { useState } from 'react'
-import { useRef } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom'
-import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
 import Extension, { ExtensionType } from '../lib/Extension'
 
 export type NodeViewCreator = (args: {
@@ -116,56 +112,3 @@ export abstract class NodeViewReactSelectable extends NodeViewReact {
     this._render()
   }
 }
-
-export function lazyReactNodeView<P>(
-  Component: React.LazyExoticComponent<React.ComponentType<P>>,
-  fallback: React.ReactElement = (
-    <_FallbackContainer>
-      <CupertinoActivityIndicator />
-    </_FallbackContainer>
-  ),
-  { lazy = false }: { lazy?: boolean } = {}
-): React.ComponentType<P> {
-  if (!lazy) {
-    return (p: P) => {
-      return (
-        <React.Suspense fallback={fallback}>
-          <Component {...p} />
-        </React.Suspense>
-      )
-    }
-  }
-
-  return (p: P) => {
-    const container = useRef<HTMLDivElement>(null)
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-      const observer = new IntersectionObserver(entries => {
-        if (entries[0]?.isIntersecting) {
-          setVisible(true)
-        }
-      })
-      container.current && observer.observe(container.current)
-
-      return () => observer.disconnect()
-    }, [])
-
-    return (
-      <div ref={container}>
-        {!visible ? (
-          fallback
-        ) : (
-          <React.Suspense fallback={fallback}>{visible && <Component {...p} />}</React.Suspense>
-        )}
-      </div>
-    )
-  }
-}
-
-const _FallbackContainer = styled.div`
-  min-height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-`

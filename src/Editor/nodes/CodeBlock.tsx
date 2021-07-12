@@ -5,9 +5,12 @@ import { Plugin, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
+import { useCallback } from 'react'
+import { useState } from 'react'
 import { v4 } from 'uuid'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
-import Node, { lazyReactNodeView, NodeViewCreator, NodeViewReactSelectable } from './Node'
+import { LazyComponent } from '../lib/LazyComponent'
+import Node, { NodeViewCreator, NodeViewReactSelectable } from './Node'
 
 type MonacoInstance = import('../lib/MonacoEditor').MonacoInstance
 
@@ -246,52 +249,67 @@ class CodeBlockNodeView extends NodeViewReactSelectable {
 
   private isAtFirstPosition = false
 
-  private MonacoEditor = lazyReactNodeView(
-    React.lazy(() => import('../lib/MonacoEditor')),
-    <_FallbackContainer>
-      <CupertinoActivityIndicator />
-    </_FallbackContainer>,
-    { lazy: true }
-  )
+  private MonacoEditor = React.lazy(() => import('../lib/MonacoEditor'))
 
   component = () => {
     const { MonacoEditor } = this
+    const [visible, setVisible] = useState(false)
+
+    const onVisibleChange = useCallback((visible: boolean) => {
+      visible && setVisible(true)
+    }, [])
+
+    const fallback = (
+      <_Loading>
+        <CupertinoActivityIndicator />
+      </_Loading>
+    )
 
     return (
-      <MonacoEditor
-        defaultValue={this.node.textContent}
-        language={this.language}
-        readOnly={!this.view.editable}
-        focused={this.selected}
-        clientID={this.clientId}
-        onInited={e => this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)}
-        onDestroyed={() => this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)}
-        onInsert={this.onInsert}
-        onReplace={this.onReplace}
-        onDelete={this.onDelete}
-        onLanguageChange={this.onLanguageChange}
-        onKeyDown={(_, editor) => {
-          this.isAtFirstPosition =
-            editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
-        }}
-        onKeyUp={e => {
-          // KeyCode.Backspace is 1
-          if (e.keyCode === 1 && this.isAtFirstPosition) {
-            this.view.dispatch(
-              this.view.state.tr.setNodeMarkup(
-                this.getPos(),
-                this.view.state.schema.nodes['paragraph']
-              )
-            )
-            this.view.focus()
-          }
-        }}
-      />
+      <LazyComponent component="div" onVisibleChange={onVisibleChange}>
+        {!visible ? (
+          fallback
+        ) : (
+          <React.Suspense fallback={fallback}>
+            <MonacoEditor
+              defaultValue={this.node.textContent}
+              language={this.language}
+              readOnly={!this.view.editable}
+              focused={this.selected}
+              clientID={this.clientId}
+              onInited={e => this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)}
+              onDestroyed={() =>
+                this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)
+              }
+              onInsert={this.onInsert}
+              onReplace={this.onReplace}
+              onDelete={this.onDelete}
+              onLanguageChange={this.onLanguageChange}
+              onKeyDown={(_, editor) => {
+                this.isAtFirstPosition =
+                  editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
+              }}
+              onKeyUp={e => {
+                // KeyCode.Backspace is 1
+                if (e.keyCode === 1 && this.isAtFirstPosition) {
+                  this.view.dispatch(
+                    this.view.state.tr.setNodeMarkup(
+                      this.getPos(),
+                      this.view.state.schema.nodes['paragraph']
+                    )
+                  )
+                  this.view.focus()
+                }
+              }}
+            />
+          </React.Suspense>
+        )}
+      </LazyComponent>
     )
   }
 }
 
-const _FallbackContainer = styled.div`
+const _Loading = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;

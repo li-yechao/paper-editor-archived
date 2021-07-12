@@ -15,15 +15,22 @@ import { useMountedState, useUpdate } from 'react-use'
 import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
 import { StrictEventEmitter } from '../../utils/typed-events'
 import { getImageThumbnail, readAsDataURL } from '../lib/image'
+import { LazyComponent } from '../lib/LazyComponent'
 import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface VideoBlockOptions {
   upload: (file: File | File[]) => Promise<string>
   getSrc: (src: string) => Promise<string> | string
-  getPoster: (poster: string) => Promise<string> | string
   thumbnail: {
     maxSize: number
   }
+}
+
+export interface VideoBlockAttrs {
+  naturalWidth?: number | null
+  naturalHeight?: number | null
+  thumbnail?: string | null
+  dashArchiveSrc?: string | null
 }
 
 export default class VideoBlock extends Node {
@@ -51,11 +58,9 @@ export default class VideoBlock extends Node {
   get schema(): NodeSpec {
     return {
       attrs: {
-        src: { default: null },
         naturalWidth: { default: null },
         naturalHeight: { default: null },
         thumbnail: { default: null },
-        poster: { default: null },
         dashArchiveSrc: { default: null },
       },
       content: this.contentName,
@@ -66,17 +71,21 @@ export default class VideoBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="video_block"]',
-          getAttrs: dom => {
-            const video = (dom as HTMLElement).getElementsByTagName('video')[0]
-            return { src: video?.getAttribute('data-src') }
-          },
+          getAttrs: dom => (dom as HTMLElement).dataset,
         },
       ],
       toDOM: node => {
+        const attrs: VideoBlockAttrs = node.attrs
         return [
           'figure',
-          { 'data-type': 'video_block' },
-          ['video', { 'data-src': node.attrs.src }],
+          {
+            'data-type': 'video_block',
+            'data-natural-width': attrs.naturalWidth?.toString(),
+            'data-natural-height': attrs.naturalHeight?.toString(),
+            'data-thumbnail': attrs.thumbnail,
+            'data-dash-archive-src': attrs.dashArchiveSrc,
+          },
+          ['video'],
           ['figcaption', 0],
         ]
       },
@@ -314,6 +323,10 @@ class VideoBlockNodeView extends NodeViewReact {
 
   private isDragging = false
 
+  private get attrs(): VideoBlockAttrs {
+    return this.node.attrs
+  }
+
   stopEvent = (e: Event) => {
     if (e.type === 'dragstart') {
       this.isDragging = true
@@ -342,85 +355,106 @@ class VideoBlockNodeView extends NodeViewReact {
     }
   }
 
-  component = () => {
-    const file: File | undefined = (this.node as any).file
+  private get aspectRatio() {
+    const { naturalWidth, naturalHeight } = this.attrs
+    if (naturalWidth && naturalHeight) {
+      return `${naturalWidth} / ${naturalHeight}`
+    }
+    return undefined
+  }
 
+  component = () => {
     const _mounted = useMountedState()
     const _update = useUpdate()
     const update = useCallback(() => _mounted() && _update(), [])
 
-    const player = useRef<HTMLVideoElement>(null)
-    const playing = useRef(true)
-    const loading = useRef(false)
-    const src = useRef<string>()
-    const dashSrc = useRef<string>()
-    const poster = useRef<string>()
-    const videoFile = useRef<VideoFile>()
+    const file: File | undefined = (this.node as any).file
 
-    const setPlaying = useCallback((p: boolean) => {
-      playing.current = p
+    const state = useRef<{
+      videoFile?: VideoFile
+      loading: boolean
+      src?: string
+      poster?: string
+      visible: boolean
+      playing: boolean
+    }>({
+      loading: false,
+      poster: this.attrs.thumbnail ?? undefined,
+      visible: false,
+      playing: false,
+    })
+    const setState = useCallback((s: Partial<typeof state.current>) => {
+      state.current = { ...state.current, ...s }
       update()
     }, [])
 
-    const setLoading = useCallback((l: boolean) => {
-      loading.current = l
-      update()
+    const togglePlaying = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setState({ playing: !state.current.playing })
+    }, [])
+
+    const onVisibleChange = useCallback(async (visible: boolean) => {
+      if (!visible) {
+        setState({ visible, playing: false })
+        return
+      }
+      const { dashArchiveSrc } = this.attrs
+      const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
+      setState({
+        src: s ? `${s}/dash/index.mpd` : undefined,
+        poster: s ? `${s}/poster.jpeg` : this.attrs.thumbnail ?? undefined,
+        playing: true,
+        visible,
+      })
+    }, [])
+
+    const onPlay = useCallback(() => {
+      setState({ playing: true })
+    }, [])
+
+    const onPauseOrEnded = useCallback(() => {
+      setState({ playing: false })
     }, [])
 
     useEffect(() => {
+      if (!state.current.visible) {
+        return
+      }
       ;(async () => {
-        if (this.node.attrs.src) {
-          src.current = await this.options.getSrc(this.node.attrs.src)
-          update()
-        }
+        const { dashArchiveSrc } = this.attrs
+        const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
+        setState({
+          src: `${s}/dash/index.mpd`,
+          poster: `${s}/poster.jpeg`,
+        })
       })()
-    }, [this.node.attrs.src])
-
-    useEffect(() => {
-      ;(async () => {
-        if (this.node.attrs.poster) {
-          poster.current = await this.options.getPoster(this.node.attrs.poster)
-          update()
-        }
-      })()
-    }, [this.node.attrs.poster])
-
-    useEffect(() => {
-      ;(async () => {
-        const { dashArchiveSrc } = this.node.attrs
-        if (dashArchiveSrc) {
-          const s = await this.options.getSrc(dashArchiveSrc)
-          dashSrc.current = `${s}/dash/index.mpd`
-          poster.current = `${s}/poster.jpeg`
-          update()
-        }
-      })()
-    }, [this.node.attrs.dashArchiveSrc])
+    }, [this.attrs.dashArchiveSrc])
 
     useEffect(() => {
       if (!file) {
         return
       }
       ;(async () => {
-        setLoading(true)
-        videoFile.current = new VideoFile(file)
+        const videoFile = new VideoFile(file)
+        setState({ videoFile, loading: true })
         try {
-          videoFile.current.on('progress', update)
-          const poster = await videoFile.current.poster()
+          videoFile.on('progress', update)
+          const poster = await videoFile.poster()
           const { thumbnail, naturalWidth, naturalHeight } = await getImageThumbnail(
             poster,
             this.options.thumbnail
           )
           this.view.dispatch(
             this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
-              ...this.node.attrs,
+              ...this.attrs,
               thumbnail: await readAsDataURL(thumbnail),
               naturalWidth,
               naturalHeight,
             })
           )
 
-          const dash = await videoFile.current.dash()
+          const dash = await videoFile.dash()
           const filenameFile = new File([new Blob([file.name], { type: 'text/plain' })], 'filename')
           const dashArchiveSrc = await this.options.upload([filenameFile, poster, ...dash, file])
           this.view.dispatch(
@@ -430,64 +464,41 @@ class VideoBlockNodeView extends NodeViewReact {
             })
           )
         } finally {
-          videoFile.current.destroy()
-          videoFile.current = undefined
-          setLoading(false)
+          videoFile.destroy()
+          setState({ videoFile: undefined, loading: false })
         }
       })()
     }, [file])
 
-    const playPause = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (playing.current) {
-        player.current?.pause()
-      } else {
-        player.current?.play()
-      }
-      setPlaying(!playing.current)
-    }, [])
-
     return (
-      <_Content>
-        {dashSrc.current ? (
-          <DashPlayer
-            poster={poster.current || this.node.attrs.thumbnail}
-            width={this.node.attrs.naturalWidth}
-            muted
-            autoPlay={playing.current}
-            playsInline
-            src={dashSrc.current}
-            onEnded={() => setPlaying(false)}
-            onPause={() => setPlaying(false)}
-            onPlay={() => setPlaying(true)}
-          />
-        ) : (
-          <video
-            poster={poster.current || this.node.attrs.thumbnail}
-            width={this.node.attrs.naturalWidth}
-            ref={player}
-            muted
-            autoPlay={playing.current}
-            playsInline
-            src={src.current || undefined}
-            onEnded={() => setPlaying(false)}
-            onPause={() => setPlaying(false)}
-            onPlay={() => setPlaying(true)}
-          />
-        )}
+      <LazyComponent component={_Content} onVisibleChange={onVisibleChange}>
+        <DashVideo
+          muted
+          playsInline
+          autoPlay={state.current.playing}
+          poster={state.current.poster}
+          src={state.current.src}
+          width={this.attrs.naturalWidth ?? undefined}
+          style={{ aspectRatio: this.aspectRatio }}
+          onEnded={onPauseOrEnded}
+          onPause={onPauseOrEnded}
+          onPlay={onPlay}
+        />
 
-        <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={playPause}>
-          {playing.current ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
+        <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={togglePlaying}>
+          {state.current.playing ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
         </_PlayButton>
 
-        {loading.current && (
+        {state.current.loading && (
           <_Loading>
             <_CupertinoActivityIndicator />
-            <ProgressText status={videoFile.current?.status} ratio={videoFile.current?.ratio} />
+            <ProgressText
+              status={state.current.videoFile?.status}
+              ratio={state.current.videoFile?.ratio}
+            />
           </_Loading>
         )}
-      </_Content>
+      </LazyComponent>
     )
   }
 }
@@ -511,14 +522,16 @@ const ProgressText = ({ status, ratio }: Pick<VideoFile, 'status' | 'ratio'>) =>
   )
 }
 
-const DashPlayer = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
-  const video = useRef<HTMLVideoElement>(null)
+const DashVideo = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
+  const ref = useRef<HTMLVideoElement>(null)
   const player = useRef<dashjs.MediaPlayerClass>()
 
   const initPlayer = useCallback((src?: string, autoPlay?: boolean) => {
-    player.current?.destroy()
-    player.current = dashjs.MediaPlayer().create()
-    player.current.initialize(video.current!, src, autoPlay)
+    if (ref.current) {
+      player.current?.destroy()
+      player.current = dashjs.MediaPlayer().create()
+      player.current.initialize(ref.current, src, autoPlay)
+    }
   }, [])
 
   useEffect(() => {
@@ -527,8 +540,11 @@ const DashPlayer = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
   }, [props.src])
 
   useEffect(() => {
+    if (!player.current?.isReady()) {
+      return
+    }
     if (props.autoPlay) {
-      if (video.current?.ended) {
+      if (ref.current?.ended) {
         initPlayer(props.src, props.autoPlay)
       }
       player.current?.play()
@@ -539,8 +555,8 @@ const DashPlayer = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
 
   return (
     <video
-      ref={video}
       {...props}
+      ref={ref}
       onEnded={e => {
         props.onEnded?.(e)
       }}
