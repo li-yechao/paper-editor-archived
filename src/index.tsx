@@ -1,5 +1,5 @@
-import React from 'react'
-import ReactDOM from 'react-dom'
-import { App } from './App'
+import Editor from './editor'
 
-ReactDOM.render(<App />, document.getElementById('app'))
+export type { EditorProps, Version, DocJson, ClientID } from './editor'
+
+export default Editor

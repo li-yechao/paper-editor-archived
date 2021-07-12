@@ -1,6 +1,5 @@
-import { ThemeProvider as EmotionThemeProvider } from '@emotion/react'
 import styled from '@emotion/styled'
-import { Box, createMuiTheme, MuiThemeProvider, StylesProvider } from '@material-ui/core'
+import { Box } from '@material-ui/core'
 import { Image } from '@material-ui/icons'
 import { SpeedDial, SpeedDialAction, SpeedDialIcon } from '@material-ui/lab'
 import { createHotkey } from '@react-hook/hotkey'
@@ -16,11 +15,10 @@ import { Transaction } from 'prosemirror-state'
 import { Step } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
 import React, { createRef } from 'react'
-import { hot } from 'react-hot-loader/root'
 import { useToggle } from 'react-use'
 import { io, Socket } from 'socket.io-client'
 import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
-import Editor from './Editor'
+import _Editor from './Editor'
 import Manager from './Editor/lib/Manager'
 import Bold from './Editor/marks/Bold'
 import Code from './Editor/marks/Code'
@@ -46,32 +44,7 @@ import VideoBlock from './Editor/nodes/VideoBlock'
 import DropPasteFile from './Editor/plugins/DropPasteFile'
 import Placeholder from './Editor/plugins/Placeholder'
 import Plugins from './Editor/plugins/Plugins'
-import Messager from './Messager'
 import { notEmpty } from './utils/array'
-
-export interface Config {
-  collab?: CollabConfig
-  ipfsApi?: string
-  ipfsGateway?: string
-}
-
-export type CollabConfig = {
-  socketIoUri: string
-  paperId: string
-  accessToken: string
-}
-
-export interface MessagerEmitEvents {
-  ready: () => void
-  persistence: (e: { version: Version; updatedAt: number }) => void
-  change: (e: { version: Version }) => void
-  titleChange: (e: { title: string }) => void
-}
-
-export interface MessagerReservedEvents {
-  init: (config?: Config) => void
-  save: () => void
-}
 
 export type Version = number
 
@@ -90,26 +63,19 @@ export interface CollabListenEvents {
   persistence: (e: { version: Version; updatedAt: number }) => void
 }
 
-export const App = hot(() => {
-  const theme = createMuiTheme()
+export interface EditorProps {
+  ipfsApi?: string
+  ipfsGateway?: string
+  socketUri?: string
+  paperId?: string
+  accessToken?: string
+  onPersistence?: (e: { version: Version; updatedAt: number }) => void
+  onChange?: (e: { version: Version }) => void
+  onTitleChange?: (e: { title: string }) => void
+}
 
-  return (
-    <StylesProvider injectFirst>
-      <MuiThemeProvider theme={theme}>
-        <EmotionThemeProvider theme={theme}>
-          <_App />
-        </EmotionThemeProvider>
-      </MuiThemeProvider>
-    </StylesProvider>
-  )
-})
-
-class _App extends React.PureComponent<{}> {
-  private config?: Config
-
-  private messager = new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>()
-
-  private editor = createRef<Editor>()
+export default class Editor extends React.PureComponent<EditorProps> {
+  private editor = createRef<_Editor>()
 
   private manager?: Manager
 
@@ -119,51 +85,12 @@ class _App extends React.PureComponent<{}> {
   private set title(title: string) {
     if (this._title !== title) {
       this._title = title
-      this.messager.emit('titleChange', { title })
+      this.props.onTitleChange?.({ title })
     }
   }
 
   private get editorView() {
     return this.editor.current?.editorView
-  }
-
-  constructor(props: {}) {
-    super(props)
-
-    this.messager.on('init', config => {
-      this.config = config
-
-      if (!this.config?.collab) {
-        this.initManager({})
-        return
-      }
-
-      const { socketIoUri, accessToken, paperId } = this.config.collab
-      this.collabClient = io(socketIoUri, {
-        query: { paperId },
-        extraHeaders: { authorization: `Bearer ${accessToken}` },
-      })
-      this.collabClient.on('paper', ({ version, doc, clientID }) => {
-        this.initManager({ doc, collab: { version, clientID } })
-      })
-      this.collabClient.on('transaction', ({ steps, clientIDs }) => {
-        const { editorView } = this
-        if (editorView) {
-          const { state } = editorView
-          const tr = receiveTransaction(
-            state,
-            steps.map(i => Step.fromJSON(state.schema, i)),
-            clientIDs
-          )
-          editorView.updateState(state.apply(tr))
-        }
-      })
-      this.collabClient.on('persistence', e => this.messager.emit('persistence', e))
-    })
-
-    this.messager.on('save', this.save)
-
-    this.messager.emit('ready')
   }
 
   componentDidMount() {
@@ -173,18 +100,55 @@ class _App extends React.PureComponent<{}> {
         this.save()
       })(e)
     })
+    this.init()
   }
 
-  componentWillUnmount() {
-    this.messager.dispose()
+  componentDidUpdate(prevProps: EditorProps) {
+    if (
+      this.props.ipfsApi !== prevProps.ipfsApi ||
+      this.props.ipfsGateway !== prevProps.ipfsGateway ||
+      this.props.socketUri !== prevProps.socketUri ||
+      this.props.paperId !== prevProps.paperId ||
+      this.props.accessToken !== prevProps.accessToken
+    ) {
+      this.init()
+    }
   }
 
-  private save = () => {
+  save() {
     this.collabClient?.emit('save')
   }
 
+  private init() {
+    const { socketUri, paperId, accessToken, ipfsApi, ipfsGateway } = this.props
+    if (!socketUri || !paperId || !accessToken || !ipfsApi || !ipfsGateway) {
+      return
+    }
+
+    this.collabClient = io(socketUri, {
+      query: { paperId },
+      extraHeaders: { authorization: `Bearer ${accessToken}` },
+    })
+    this.collabClient.on('paper', ({ version, doc, clientID }) => {
+      this.initManager({ doc, collab: { version, clientID } })
+    })
+    this.collabClient.on('transaction', ({ steps, clientIDs }) => {
+      const { editorView } = this
+      if (editorView) {
+        const { state } = editorView
+        const tr = receiveTransaction(
+          state,
+          steps.map(i => Step.fromJSON(state.schema, i)),
+          clientIDs
+        )
+        editorView.updateState(state.apply(tr))
+      }
+    })
+    this.collabClient.on('persistence', e => this.props.onPersistence?.(e))
+  }
+
   private initManager(e: { doc?: DocJson; collab?: { version: Version; clientID: ClientID } }) {
-    const { ipfsApi, ipfsGateway } = this.config || {}
+    const { ipfsApi, ipfsGateway } = this.props
     const uploadOptions =
       ipfsApi && ipfsGateway
         ? {
@@ -310,7 +274,7 @@ class _App extends React.PureComponent<{}> {
 
     if (tr.docChanged) {
       const version = getVersion(view.state)
-      this.messager.emit('change', { version })
+      this.props.onChange?.({ version })
 
       const title = this.getDocTitle(view.state.doc)
       if (title !== undefined) {
@@ -341,7 +305,7 @@ class _App extends React.PureComponent<{}> {
 
     return (
       <>
-        <_Editor
+        <__Editor
           ref={editor}
           autoFocus
           manager={manager}
@@ -356,7 +320,13 @@ class _App extends React.PureComponent<{}> {
   }
 }
 
-const _SpeedDial = ({ editor, manager }: { editor: React.RefObject<Editor>; manager: Manager }) => {
+const _SpeedDial = ({
+  editor,
+  manager,
+}: {
+  editor: React.RefObject<_Editor>
+  manager: Manager
+}) => {
   const [open, toggleOpen] = useToggle(false)
 
   const handleImageClick = () => {
@@ -418,7 +388,7 @@ const _Loading = styled.div`
   justify-content: center;
 `
 
-const _Editor = styled(Editor)`
+const __Editor = styled(_Editor)`
   .ProseMirror {
     min-height: 100vh;
     padding: 8px;
@@ -427,37 +397,3 @@ const _Editor = styled(Editor)`
     margin: auto;
   }
 `
-
-if (process.env.NODE_ENV === 'development') {
-  const search = new URLSearchParams(window.location.search)
-  const socketIoUri = search.get('socketIoUri')
-  const accessToken = search.get('accessToken')
-  const paperId = search.get('paperId')
-
-  const collab: CollabConfig | undefined =
-    socketIoUri && accessToken && paperId
-      ? {
-          socketIoUri,
-          accessToken,
-          paperId,
-        }
-      : undefined
-
-  const ipfsApi = search.get('ipfsApi')
-  const ipfsGateway = search.get('ipfsGateway')
-
-  const config: Config | undefined =
-    collab || ipfsApi || ipfsGateway
-      ? {
-          ipfsApi: ipfsApi || undefined,
-          ipfsGateway: ipfsGateway || undefined,
-          collab,
-        }
-      : undefined
-
-  if (config) {
-    setTimeout(() => {
-      window.postMessage(['init', config], '*')
-    })
-  }
-}

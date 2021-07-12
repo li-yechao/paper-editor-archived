@@ -11,8 +11,8 @@
   "private": true,
   "scripts": {
     "start": "npm run serve --",
-    "serve": "node scripts/dist/index.js serve src/index.tsx",
-    "build": "node scripts/dist/index.js build src/index.tsx",
+    "serve": "node scripts/dist/index.js serve src/main.tsx",
+    "build": "node scripts/dist/index.js build src/main.tsx",
     "build:scripts": "rimraf scripts/dist && tsc -p scripts"
   },
   "dependencies": {
