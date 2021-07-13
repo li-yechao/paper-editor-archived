@@ -32,7 +32,7 @@ import BulletList from './Editor/nodes/BulletList'
 import CodeBlock from './Editor/nodes/CodeBlock'
 import Doc from './Editor/nodes/Doc'
 import Heading from './Editor/nodes/Heading'
-import ImageBlock from './Editor/nodes/ImageBlock'
+import ImageBlock, { ImageBlockOptions } from './Editor/nodes/ImageBlock'
 import ListItem from './Editor/nodes/ListItem'
 import OrderedList from './Editor/nodes/OrderedList'
 import Paragraph from './Editor/nodes/Paragraph'
@@ -40,7 +40,7 @@ import Text from './Editor/nodes/Text'
 import Title from './Editor/nodes/Title'
 import TodoItem from './Editor/nodes/TodoItem'
 import TodoList from './Editor/nodes/TodoList'
-import VideoBlock from './Editor/nodes/VideoBlock'
+import VideoBlock, { VideoBlockOptions } from './Editor/nodes/VideoBlock'
 import DropPasteFile from './Editor/plugins/DropPasteFile'
 import Placeholder from './Editor/plugins/Placeholder'
 import Plugins from './Editor/plugins/Plugins'
@@ -52,20 +52,27 @@ export type DocJson = { [key: string]: any }
 
 export type ClientID = string | number
 
+export interface CreateFileSource {
+  path: string
+  content: ArrayBuffer
+}
+
 export interface CollabEmitEvents {
   transaction: (e: { version: Version; steps: DocJson[] }) => void
   save: () => void
+  createFile: (
+    e: { source: CreateFileSource | CreateFileSource[] },
+    cb: (e: { hash: string[] }) => void
+  ) => void
 }
 
 export interface CollabListenEvents {
-  paper: (e: { clientID: ClientID; version: Version; doc: DocJson }) => void
+  paper: (e: { clientID: ClientID; version: Version; doc: DocJson; ipfsGatewayUri: string }) => void
   transaction: (e: { version: Version; steps: DocJson[]; clientIDs: ClientID[] }) => void
   persistence: (e: { version: Version; updatedAt: number }) => void
 }
 
 export interface EditorProps {
-  ipfsApi?: string
-  ipfsGateway?: string
   socketUri?: string
   paperId?: string
   accessToken?: string
@@ -105,8 +112,6 @@ export default class Editor extends React.PureComponent<EditorProps> {
 
   componentDidUpdate(prevProps: EditorProps) {
     if (
-      this.props.ipfsApi !== prevProps.ipfsApi ||
-      this.props.ipfsGateway !== prevProps.ipfsGateway ||
       this.props.socketUri !== prevProps.socketUri ||
       this.props.paperId !== prevProps.paperId ||
       this.props.accessToken !== prevProps.accessToken
@@ -120,8 +125,8 @@ export default class Editor extends React.PureComponent<EditorProps> {
   }
 
   private init() {
-    const { socketUri, paperId, accessToken, ipfsApi, ipfsGateway } = this.props
-    if (!socketUri || !paperId || !accessToken || !ipfsApi || !ipfsGateway) {
+    const { socketUri, paperId, accessToken } = this.props
+    if (!socketUri || !paperId || !accessToken) {
       return
     }
 
@@ -129,8 +134,8 @@ export default class Editor extends React.PureComponent<EditorProps> {
       query: { paperId },
       extraHeaders: { authorization: `Bearer ${accessToken}` },
     })
-    this.collabClient.on('paper', ({ version, doc, clientID }) => {
-      this.initManager({ doc, collab: { version, clientID } })
+    this.collabClient.on('paper', ({ version, doc, clientID, ipfsGatewayUri }) => {
+      this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri })
     })
     this.collabClient.on('transaction', ({ steps, clientIDs }) => {
       const { editorView } = this
@@ -147,46 +152,35 @@ export default class Editor extends React.PureComponent<EditorProps> {
     this.collabClient.on('persistence', e => this.props.onPersistence?.(e))
   }
 
-  private initManager(e: { doc?: DocJson; collab?: { version: Version; clientID: ClientID } }) {
-    const { ipfsApi, ipfsGateway } = this.props
-    const uploadOptions =
-      ipfsApi && ipfsGateway
-        ? {
-            upload: async (file: File | File[]) => {
-              const form = new FormData()
-              const query: { [key: string]: string } = {}
-              if (Array.isArray(file)) {
-                query['recursive'] = 'true'
-                query['wrap-with-directory'] = 'true'
-                for (const f of file) {
-                  form.append(f.name, f, f.name)
-                }
-              } else {
-                form.append(file.name, file, file.name)
-              }
-
-              const qs = Object.entries(query)
-                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-                .join('&')
-              const res = await fetch(`${ipfsApi}/api/v0/add?${qs}`, {
-                method: 'POST',
-                body: form,
-              })
-              const texts = (await res.text()).split('\n').filter(i => !!i.trim())
-              const array = texts.map(i => JSON.parse(i))
-              if (array.length === 0) {
-                throw new Error('Invalid upload response []')
-              }
-              return array[array.length - 1].Hash
-            },
-            getSrc: (hash: string) => {
-              return `${ipfsGateway}/ipfs/${hash}`
-            },
-            thumbnail: {
-              maxSize: 1024,
-            },
-          }
-        : undefined
+  private initManager(e: {
+    doc: DocJson
+    collab: { version: Version; clientID: ClientID }
+    ipfsGatewayUri: string
+  }) {
+    const uploadOptions: ImageBlockOptions & VideoBlockOptions = {
+      upload: async (file: File | File[]) => {
+        const source = Array.isArray(file)
+          ? await Promise.all(
+              file.map(async i => ({
+                path: i.name,
+                content: await i.arrayBuffer(),
+              }))
+            )
+          : {
+              path: file.name,
+              content: await file.arrayBuffer(),
+            }
+        return new Promise<string>(resolve => {
+          this.collabClient?.emit('createFile', { source }, res => {
+            resolve(res.hash[res.hash.length - 1]!)
+          })
+        })
+      },
+      getSrc: (hash: string) => `${e.ipfsGatewayUri}/${hash}`,
+      thumbnail: {
+        maxSize: 1024,
+      },
+    }
 
     const imageBlock = uploadOptions && new ImageBlock(uploadOptions)
     const videoBlock = uploadOptions && new VideoBlock(uploadOptions)

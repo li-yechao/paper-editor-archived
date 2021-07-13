@@ -11,8 +11,6 @@ import Editor, { Version } from './index'
 import Messager from './Messager'
 
 type Config = {
-  ipfsApi?: string
-  ipfsGateway?: string
   socketUri?: string
   paperId?: string
   accessToken?: string
@@ -61,8 +59,6 @@ const App = hot(() => {
         <EmotionThemeProvider theme={theme}>
           <Editor
             ref={editorRef}
-            ipfsApi={config?.ipfsApi}
-            ipfsGateway={config?.ipfsGateway}
             socketUri={config?.socketUri}
             paperId={config?.paperId}
             accessToken={config?.accessToken}
@@ -83,8 +79,6 @@ ReactDOM.render(<App />, document.getElementById('app'))
   setTimeout(() => {
     const query = new URLSearchParams(window.location.search)
     const config: Config = {
-      ipfsApi: query.get('ipfsApi') ?? undefined,
-      ipfsGateway: query.get('ipfsGateway') ?? undefined,
       socketUri: query.get('socketUri') ?? undefined,
       paperId: query.get('paperId') ?? undefined,
       accessToken: query.get('accessToken') ?? undefined,
