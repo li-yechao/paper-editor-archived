@@ -20,7 +20,7 @@ import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface VideoBlockOptions {
   upload: (file: File | File[]) => Promise<string>
-  getSrc: (src: string) => Promise<string> | string
+  getSrc: (src: string) => string
   thumbnail: {
     maxSize: number
   }
@@ -355,12 +355,18 @@ class VideoBlockNodeView extends NodeViewReact {
     }
   }
 
-  private get aspectRatio() {
+  private get containerStyle() {
     const { naturalWidth, naturalHeight } = this.attrs
-    if (naturalWidth && naturalHeight) {
-      return `${naturalWidth} / ${naturalHeight}`
+    if (!naturalWidth || !naturalHeight) {
+      return {
+        width: 200,
+        aspectRatio: `1 / 1`,
+      }
     }
-    return undefined
+    return {
+      width: naturalWidth,
+      aspectRatio: `${naturalWidth} / ${naturalHeight}`,
+    }
   }
 
   component = () => {
@@ -379,7 +385,6 @@ class VideoBlockNodeView extends NodeViewReact {
       playing: boolean
     }>({
       loading: false,
-      poster: this.attrs.thumbnail ?? undefined,
       visible: false,
       playing: false,
     })
@@ -394,16 +399,16 @@ class VideoBlockNodeView extends NodeViewReact {
       setState({ playing: !state.current.playing })
     }, [])
 
-    const onVisibleChange = useCallback(async (visible: boolean) => {
+    const onVisibleChange = useCallback((visible: boolean) => {
       if (!visible) {
         setState({ visible, playing: false })
         return
       }
       const { dashArchiveSrc } = this.attrs
-      const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
+      const s = dashArchiveSrc && this.options.getSrc(dashArchiveSrc)
       setState({
         src: s ? `${s}/dash/index.mpd` : undefined,
-        poster: s ? `${s}/poster.jpeg` : this.attrs.thumbnail ?? undefined,
+        poster: s ? `${s}/poster.jpeg` : undefined,
         playing: true,
         visible,
       })
@@ -472,18 +477,21 @@ class VideoBlockNodeView extends NodeViewReact {
 
     return (
       <LazyComponent component={_Content} onVisibleChange={onVisibleChange}>
-        <DashVideo
-          muted
-          playsInline
-          autoPlay={state.current.playing}
-          poster={state.current.poster}
-          src={state.current.src}
-          width={this.attrs.naturalWidth ?? undefined}
-          style={{ aspectRatio: this.aspectRatio }}
-          onEnded={onPauseOrEnded}
-          onPause={onPauseOrEnded}
-          onPlay={onPlay}
-        />
+        <_VideoContainer style={this.containerStyle}>
+          {this.attrs.thumbnail && <img src={this.attrs.thumbnail} />}
+          {state.current.poster && <img src={state.current.poster} />}
+
+          <DashVideo
+            muted
+            playsInline
+            autoPlay={state.current.playing}
+            poster={state.current.poster}
+            src={state.current.src}
+            onEnded={onPauseOrEnded}
+            onPause={onPauseOrEnded}
+            onPlay={onPlay}
+          />
+        </_VideoContainer>
 
         <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={togglePlaying}>
           {state.current.playing ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
@@ -567,11 +575,22 @@ const DashVideo = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
 const _Content = styled.div`
   position: relative;
   text-align: center;
+`
 
+const _VideoContainer = styled.div`
+  max-width: 100%;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+
+  > img,
   > video {
-    vertical-align: middle;
-    object-fit: contain;
-    max-width: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
   }
 `
 

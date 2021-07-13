@@ -14,7 +14,7 @@ import Node, { NodeViewReact, NodeViewCreator } from './Node'
 
 export interface ImageBlockOptions {
   upload: (file: File) => Promise<string>
-  getSrc: (src: string) => Promise<string> | string
+  getSrc: (src: string) => string
   thumbnail: {
     maxSize: number
   }
@@ -234,7 +234,7 @@ class ImageBlockNodeView extends NodeViewReact {
       visible: boolean
     }>({
       loading: false,
-      src: this.attrs.thumbnail ?? undefined,
+      src: undefined,
       visible: false,
     })
     const setState = useCallback((s: Partial<typeof state.current>) => {
@@ -242,12 +242,12 @@ class ImageBlockNodeView extends NodeViewReact {
       update()
     }, [])
 
-    const onVisibleChange = useCallback(async (visible: boolean) => {
+    const onVisibleChange = useCallback((visible: boolean) => {
       if (!visible) {
         setState({ visible })
         return
       }
-      const src = (this.attrs.src && (await this.options.getSrc(this.attrs.src))) ?? undefined
+      const src = (this.attrs.src && this.options.getSrc(this.attrs.src)) ?? undefined
       setState({
         src,
         visible,
@@ -275,23 +275,33 @@ class ImageBlockNodeView extends NodeViewReact {
     }, [file])
 
     return (
-      <_Picture>
-        <LazyComponent
-          component="img"
-          onVisibleChange={onVisibleChange}
-          src={state.current.src}
-          width={this.attrs.naturalWidth ?? undefined}
-          style={{ aspectRatio: this.aspectRatio }}
-        />
-      </_Picture>
+      <LazyComponent
+        component={_ImgContainer}
+        onVisibleChange={onVisibleChange}
+        style={{
+          width: this.attrs.naturalWidth ?? undefined,
+          aspectRatio: this.aspectRatio,
+        }}
+      >
+        {this.attrs.thumbnail && <img src={this.attrs.thumbnail} />}
+        {state.current.src && <img src={state.current.src} />}
+      </LazyComponent>
     )
   }
 }
 
-const _Picture = styled.picture`
+const _ImgContainer = styled.div`
+  max-width: 100%;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+
   img {
-    vertical-align: middle;
+    position: absolute;
+    left: 0;
+    top: 0;
     object-fit: contain;
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
   }
 `
