@@ -216,9 +216,9 @@ class ImageBlockNodeView extends NodeViewReact {
   private get aspectRatio() {
     const { naturalWidth, naturalHeight } = this.attrs
     if (naturalWidth && naturalHeight) {
-      return `${naturalWidth} / ${naturalHeight}`
+      return (naturalHeight / naturalWidth) * 100
     }
-    return undefined
+    return 0
   }
 
   component = () => {
@@ -278,11 +278,9 @@ class ImageBlockNodeView extends NodeViewReact {
       <LazyComponent
         component={_ImgContainer}
         onVisibleChange={onVisibleChange}
-        style={{
-          width: this.attrs.naturalWidth ?? undefined,
-          aspectRatio: this.aspectRatio,
-        }}
+        style={{ width: this.attrs.naturalWidth ?? undefined }}
       >
+        <div style={{ paddingBottom: `${this.aspectRatio}%` }} />
         {this.attrs.thumbnail && <img src={this.attrs.thumbnail} />}
         {state.current.src && <img src={state.current.src} />}
       </LazyComponent>

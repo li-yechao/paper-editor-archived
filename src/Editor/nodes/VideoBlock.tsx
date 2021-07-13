@@ -355,18 +355,12 @@ class VideoBlockNodeView extends NodeViewReact {
     }
   }
 
-  private get containerStyle() {
+  private get aspectRatio() {
     const { naturalWidth, naturalHeight } = this.attrs
-    if (!naturalWidth || !naturalHeight) {
-      return {
-        width: 200,
-        aspectRatio: `1 / 1`,
-      }
+    if (naturalWidth && naturalHeight) {
+      return (naturalHeight / naturalWidth) * 100
     }
-    return {
-      width: naturalWidth,
-      aspectRatio: `${naturalWidth} / ${naturalHeight}`,
-    }
+    return 50
   }
 
   component = () => {
@@ -477,7 +471,9 @@ class VideoBlockNodeView extends NodeViewReact {
 
     return (
       <LazyComponent component={_Content} onVisibleChange={onVisibleChange}>
-        <_VideoContainer style={this.containerStyle}>
+        <_VideoContainer style={{ width: this.attrs.naturalWidth ?? '100%' }}>
+          <div style={{ paddingBottom: `${this.aspectRatio}%` }} />
+
           {this.attrs.thumbnail && <img src={this.attrs.thumbnail} />}
           {state.current.poster && <img src={state.current.poster} />}
 
