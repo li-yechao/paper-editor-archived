@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Paper editor powered by prosemirror",
   "main": "src/index.tsx",
+  "license": "Apache-2.0",
   "repository": "https://github.com/li-yechao/paper-editor.git",
   "author": {
     "name": "LiYechao",
