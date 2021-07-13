@@ -18,32 +18,32 @@ import React, { createRef } from 'react'
 import { useToggle } from 'react-use'
 import { io, Socket } from 'socket.io-client'
 import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
-import _Editor from './Editor'
-import Manager from './Editor/lib/Manager'
-import Bold from './Editor/marks/Bold'
-import Code from './Editor/marks/Code'
-import Highlight from './Editor/marks/Highlight'
-import Italic from './Editor/marks/Italic'
-import Link from './Editor/marks/Link'
-import Strikethrough from './Editor/marks/Strikethrough'
-import Underline from './Editor/marks/Underline'
-import Blockquote from './Editor/nodes/Blockquote'
-import BulletList from './Editor/nodes/BulletList'
-import CodeBlock from './Editor/nodes/CodeBlock'
-import Doc from './Editor/nodes/Doc'
-import Heading from './Editor/nodes/Heading'
-import ImageBlock, { ImageBlockOptions } from './Editor/nodes/ImageBlock'
-import ListItem from './Editor/nodes/ListItem'
-import OrderedList from './Editor/nodes/OrderedList'
-import Paragraph from './Editor/nodes/Paragraph'
-import Text from './Editor/nodes/Text'
-import Title from './Editor/nodes/Title'
-import TodoItem from './Editor/nodes/TodoItem'
-import TodoList from './Editor/nodes/TodoList'
-import VideoBlock, { VideoBlockOptions } from './Editor/nodes/VideoBlock'
-import DropPasteFile from './Editor/plugins/DropPasteFile'
-import Placeholder from './Editor/plugins/Placeholder'
-import Plugins from './Editor/plugins/Plugins'
+import ProsemirrorEditor from './prosemirror'
+import Manager from './prosemirror/lib/Manager'
+import Bold from './prosemirror/marks/Bold'
+import Code from './prosemirror/marks/Code'
+import Highlight from './prosemirror/marks/Highlight'
+import Italic from './prosemirror/marks/Italic'
+import Link from './prosemirror/marks/Link'
+import Strikethrough from './prosemirror/marks/Strikethrough'
+import Underline from './prosemirror/marks/Underline'
+import Blockquote from './prosemirror/nodes/Blockquote'
+import BulletList from './prosemirror/nodes/BulletList'
+import CodeBlock from './prosemirror/nodes/CodeBlock'
+import Doc from './prosemirror/nodes/Doc'
+import Heading from './prosemirror/nodes/Heading'
+import ImageBlock, { ImageBlockOptions } from './prosemirror/nodes/ImageBlock'
+import ListItem from './prosemirror/nodes/ListItem'
+import OrderedList from './prosemirror/nodes/OrderedList'
+import Paragraph from './prosemirror/nodes/Paragraph'
+import Text from './prosemirror/nodes/Text'
+import Title from './prosemirror/nodes/Title'
+import TodoItem from './prosemirror/nodes/TodoItem'
+import TodoList from './prosemirror/nodes/TodoList'
+import VideoBlock, { VideoBlockOptions } from './prosemirror/nodes/VideoBlock'
+import DropPasteFile from './prosemirror/plugins/DropPasteFile'
+import Placeholder from './prosemirror/plugins/Placeholder'
+import Plugins from './prosemirror/plugins/Plugins'
 import { notEmpty } from './utils/array'
 
 export type Version = number
@@ -82,7 +82,7 @@ export interface EditorProps {
 }
 
 export default class Editor extends React.PureComponent<EditorProps> {
-  private editor = createRef<_Editor>()
+  private editor = createRef<ProsemirrorEditor>()
 
   private manager?: Manager
 
@@ -318,7 +318,7 @@ const _SpeedDial = ({
   editor,
   manager,
 }: {
-  editor: React.RefObject<_Editor>
+  editor: React.RefObject<ProsemirrorEditor>
   manager: Manager
 }) => {
   const [open, toggleOpen] = useToggle(false)
@@ -382,7 +382,7 @@ const _Loading = styled.div`
   justify-content: center;
 `
 
-const __Editor = styled(_Editor)`
+const __Editor = styled(ProsemirrorEditor)`
   .ProseMirror {
     min-height: 100vh;
     padding: 8px;
