@@ -33,10 +33,19 @@ const App = hot(() => {
 
   const editorRef = useRef<Editor>(null)
   const messager = useRef(new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>())
-  const [config, setConfig] = useState<Config>()
+  const [config, setConfig] = useState<Config>(
+    (() => {
+      const query = new URLSearchParams(window.location.search)
+      return {
+        socketUri: query.get('socketUri') ?? undefined,
+        paperId: query.get('paperId') ?? undefined,
+        accessToken: query.get('accessToken') ?? undefined,
+      }
+    })()
+  )
 
   useEffect(() => {
-    messager.current.on('init', config => setConfig(config))
+    messager.current.on('init', config => setConfig(config ?? {}))
     messager.current.on('save', () => editorRef.current?.save())
     messager.current.emit('ready')
   }, [])
@@ -59,9 +68,9 @@ const App = hot(() => {
         <EmotionThemeProvider theme={theme}>
           <Editor
             ref={editorRef}
-            socketUri={config?.socketUri}
-            paperId={config?.paperId}
-            accessToken={config?.accessToken}
+            socketUri={config.socketUri}
+            paperId={config.paperId}
+            accessToken={config.accessToken}
             onPersistence={onPersistence}
             onChange={onChange}
             onTitleChange={onTitleChange}
@@ -73,16 +82,3 @@ const App = hot(() => {
 })
 
 ReactDOM.render(<App />, document.getElementById('app'))
-
-// Parse args from query string.
-;(function main() {
-  setTimeout(() => {
-    const query = new URLSearchParams(window.location.search)
-    const config: Config = {
-      socketUri: query.get('socketUri') ?? undefined,
-      paperId: query.get('paperId') ?? undefined,
-      accessToken: query.get('accessToken') ?? undefined,
-    }
-    window.postMessage(['init', config], '*')
-  })
-})()
