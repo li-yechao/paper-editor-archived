@@ -13,13 +13,14 @@
 // limitations under the License.
 
 import { FormatStrikethrough } from '@material-ui/icons'
-import { Keymap, toggleMark } from 'prosemirror-commands'
+import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { MarkSpec, MarkType } from 'prosemirror-model'
 import React from 'react'
 import createMenuComponent, { MenuComponentType } from '../lib/createMenuComponent'
 import isMarkActive from '../lib/isMarkActive'
 import markInputRule from '../lib/markInputRule'
+import toggleMark from '../lib/toggleMark'
 import Mark from './Mark'
 
 export default class Strikethrough extends Mark {

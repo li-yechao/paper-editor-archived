@@ -15,13 +15,13 @@
 import styled from '@emotion/styled'
 import { Button, TextField } from '@material-ui/core'
 import { Launch, Link as LinkIcon } from '@material-ui/icons'
-import { toggleMark } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
 import { MarkSpec, MarkType, Schema } from 'prosemirror-model'
 import React, { useState } from 'react'
 import createMenuComponent, { MenuComponentType } from '../lib/createMenuComponent'
 import getMarkRange from '../lib/getMarkRange'
 import isMarkActive from '../lib/isMarkActive'
+import toggleMark from '../lib/toggleMark'
 import Mark from './Mark'
 
 export default class Link extends Mark {

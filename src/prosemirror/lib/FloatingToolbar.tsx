@@ -109,7 +109,7 @@ function usePopperProps(editorView: EditorView) {
         const props = { ...defaultProps }
 
         const { selection } = editorView.state
-        if (!selection.empty && !(selection as any).node) {
+        if ((!selection.empty || selection.$from.marks().length) && !(selection as any).node) {
           const dom = editorView.dom
           const { width, left, top } = dom.getBoundingClientRect()
           const { left: fromLeft, top: fromTop } = editorView.coordsAtPos(selection.from)
