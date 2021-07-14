@@ -14,10 +14,11 @@
 
 import styled from '@emotion/styled'
 import { Box, ButtonGroup, Popper, Tooltip, TooltipProps } from '@material-ui/core'
-import { debounce } from 'lodash'
+import { throttle } from 'lodash'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
 import { useState } from 'react'
+import { useCallback } from 'react'
 import { useEffect } from 'react'
 import { useToggle } from 'react-use'
 import { MenuComponentType } from './createMenuComponent'
@@ -27,82 +28,118 @@ export interface FloatingToolbarProps {
   menus: MenuComponentType[]
 }
 
-export const FloatingToolbar = (props: FloatingToolbarProps) => {
-  const popperProps = usePopperProps(props.editorView)
-  const isSelecting = useIsSelecting(props.editorView)
+const FloatingToolbar = React.memo(
+  ({ editorView, menus }: FloatingToolbarProps) => {
+    const popperProps = usePopperProps(editorView)
+    const isSelecting = useIsSelecting(editorView)
 
-  return (
-    <Tooltip
-      {...popperProps}
-      PopperComponent={_Popper}
-      PopperProps={{ ...popperProps.PopperProps, active: !isSelecting } as any}
-      title={
-        <>
-          <ButtonGroup variant="text" color="inherit">
-            {props.menus.map((menu, index) => (
-              <menu.button key={index} editorView={props.editorView} />
-            ))}
-          </ButtonGroup>
-          {props.menus.map((menu, index) => {
-            return (
-              menu.expand &&
-              menu.isExpandVisible?.(props.editorView) && (
-                <Box key={index} borderTop={1} borderColor="rgba(0, 0, 0, 0.23)">
-                  <menu.expand editorView={props.editorView} />
-                </Box>
+    return (
+      <_FloatingToolbar
+        {...popperProps}
+        isSelecting={isSelecting}
+        menus={menus}
+        editorView={editorView}
+      />
+    )
+  },
+  (prev, next) => {
+    return (
+      prev.menus !== next.menus &&
+      prev.editorView.state.selection !== next.editorView.state.selection
+    )
+  }
+)
+
+const _FloatingToolbar = React.memo(
+  ({
+    editorView,
+    menus,
+    isSelecting,
+    ...popperProps
+  }: {
+    editorView: EditorView
+    menus: MenuComponentType[]
+    isSelecting?: boolean
+  } & Omit<TooltipProps, 'title'>) => {
+    return (
+      <Tooltip
+        {...popperProps}
+        PopperComponent={_Popper}
+        PopperProps={{ ...popperProps.PopperProps, active: !isSelecting } as any}
+        title={
+          <>
+            <ButtonGroup variant="text" color="inherit">
+              {menus.map((menu, index) => (
+                <menu.button key={index} editorView={editorView} />
+              ))}
+            </ButtonGroup>
+            {menus.map((menu, index) => {
+              return (
+                menu.expand &&
+                menu.isExpandVisible?.(editorView) && (
+                  <Box key={index} borderTop={1} borderColor="rgba(0, 0, 0, 0.23)">
+                    <menu.expand editorView={editorView} />
+                  </Box>
+                )
               )
-            )
-          })}
-        </>
-      }
-    />
-  )
+            })}
+          </>
+        }
+      />
+    )
+  }
+)
+
+const defaultProps: Omit<TooltipProps, 'title'> = {
+  open: false,
+  placement: 'top',
+  arrow: false,
+  disableFocusListener: true,
+  disableHoverListener: true,
+  disableTouchListener: true,
+  children: <div />,
 }
 
 function usePopperProps(editorView: EditorView) {
-  const defaultProps: Omit<TooltipProps, 'title'> = {
-    open: false,
-    placement: 'top',
-    arrow: true,
-    disableFocusListener: true,
-    disableHoverListener: true,
-    disableTouchListener: true,
-    children: <div />,
-  }
-
   const [props, setProps] = useState(defaultProps)
 
-  useEffect(
-    debounce(() => {
-      const props = { ...defaultProps }
+  const refresh = useCallback(
+    throttle(
+      (editorView: EditorView) => {
+        const props = { ...defaultProps }
 
-      const { selection } = editorView.state
-      if (!selection.empty && !(selection as any).node) {
-        const node = editorView.domAtPos(selection.from).node
-        const anchorEl = node instanceof Element ? node : node.parentElement
-
-        if (anchorEl) {
-          const fromPos = editorView.coordsAtPos(selection.from)
-          const toPos = editorView.coordsAtPos(selection.to)
-          const { width, left, top } = anchorEl.getBoundingClientRect()
-          const offsetX = (toPos.left - fromPos.left) / 2 + fromPos.left - left - width / 2
-          const offsetY = top - fromPos.top + 4
+        const { selection } = editorView.state
+        if (!selection.empty && !(selection as any).node) {
+          const dom = editorView.dom
+          const { width, left, top } = dom.getBoundingClientRect()
+          const { left: fromLeft, top: fromTop } = editorView.coordsAtPos(selection.from)
+          const { left: toLeft } = editorView.coordsAtPos(selection.to)
+          const offsetX = fromLeft + (toLeft - fromLeft) / 2 - left - width / 2
+          const offsetY = -(top + fromTop)
 
           props.open = true
           props.PopperProps = {
-            anchorEl,
+            anchorEl: dom,
             keepMounted: true,
             modifiers: {
+              flip: { enabled: false },
               offset: { offset: `${offsetX},${offsetY}` },
               preventOverflow: { boundariesElement: 'viewport' },
             },
           }
         }
-      }
 
-      setProps(props)
-    }, 700)
+        setProps(props)
+      },
+      1000,
+      { leading: true, trailing: true }
+    ),
+    []
   )
+
+  useEffect(() => {
+    refresh(editorView)
+  }, [editorView.state.selection])
 
   return props
 }

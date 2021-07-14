@@ -16,6 +16,7 @@ import styled from '@emotion/styled'
 import { TextSelection, Transaction } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { createRef } from 'react'
+import { MenuComponentType } from './lib/createMenuComponent'
 import FloatingToolbar from './lib/FloatingToolbar'
 import Manager from './lib/Manager'
 
@@ -32,6 +33,8 @@ export default class Editor extends React.PureComponent<EditorProps> {
   container = createRef<HTMLDivElement>()
 
   editorView?: EditorView
+
+  private menus: MenuComponentType[] = []
 
   componentDidMount() {
     this.initEditor()
@@ -57,6 +60,9 @@ export default class Editor extends React.PureComponent<EditorProps> {
     }
 
     const { manager, readOnly, dispatchTransaction } = this.props
+
+    this.menus = manager.menus
+
     this.editorView = new EditorView(container, {
       state: manager.createState(),
       editable: () => !readOnly,
@@ -82,9 +88,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
           ref={this.container}
           data-editable={!this.props.readOnly}
         />
-        {this.editorView && (
-          <FloatingToolbar editorView={this.editorView} menus={this.props.manager.menus} />
-        )}
+        {this.editorView && <FloatingToolbar editorView={this.editorView} menus={this.menus} />}
       </>
     )
   }
