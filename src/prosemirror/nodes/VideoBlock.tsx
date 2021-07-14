@@ -327,6 +327,7 @@ class VideoBlockNodeView extends NodeViewReact {
       }
     `)
     this.dom.append(this.reactDOM, this.contentDOM)
+    this._render()
   }
 
   dom = document.createElement('figure')

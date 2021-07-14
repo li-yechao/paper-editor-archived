@@ -185,6 +185,7 @@ class ImageBlockNodeView extends NodeViewReact {
       text-align: center;
     `)
     this.dom.append(this.reactDOM, this.contentDOM)
+    this._render()
   }
 
   dom = document.createElement('figure')

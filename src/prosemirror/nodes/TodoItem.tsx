@@ -103,6 +103,7 @@ class TodoItemNodeView extends NodeViewReact {
     `)
 
     this.dom.append(this.reactDOM, zero, this.contentDOM)
+    this._render()
   }
 
   dom = document.createElement('li')
