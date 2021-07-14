@@ -30,6 +30,7 @@ export interface MonacoEditorProps {
   readOnly?: boolean
   focused?: boolean
   clientID?: string | number
+  lineHeight?: number
   onInited?: (e: MonacoInstance) => void
   onDestroyed?: () => void
   onInsert?: (index: number, text: string) => void
@@ -66,6 +67,7 @@ const MonacoEditor = (props: MonacoEditorProps) => {
       value: props.defaultValue,
       language: props.language,
       theme,
+      lineHeight: props.lineHeight,
       automaticLayout: true,
       minimap: {
         enabled: false,
@@ -183,17 +185,6 @@ const MonacoEditor = (props: MonacoEditorProps) => {
 export default MonacoEditor
 
 const _RootContainer = styled.div`
-  margin: 16px 0;
-  border-radius: 8px;
-  padding: 8px 0;
-  background-color: #fffffe;
-  border: 1px solid #aeaeae;
-
-  @media (prefers-color-scheme: dark) {
-    background-color: #1e1e1e;
-    border: 1px solid transparent;
-  }
-
   .iPadShowKeyboard {
     display: none;
   }

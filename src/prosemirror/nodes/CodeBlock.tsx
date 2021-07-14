@@ -209,6 +209,7 @@ class CodeBlockNodeView extends NodeViewReactSelectable {
   ) {
     super(node)
     this.dom.append(this.reactDOM)
+    this._render()
   }
 
   dom = document.createElement('div')
@@ -279,13 +280,22 @@ class CodeBlockNodeView extends NodeViewReactSelectable {
       </_Loading>
     )
 
+    // TODO: Move extras (like language select and spacing) to this component.
+    const lineHeight = 18
+    const extraHeight = 64
+
     return (
-      <LazyComponent component="div" onVisibleChange={onVisibleChange}>
+      <LazyComponent
+        component={_Container}
+        onVisibleChange={onVisibleChange}
+        style={{ minHeight: extraHeight + lineHeight * this.node.textContent.split('\n').length }}
+      >
         {!visible ? (
           fallback
         ) : (
           <React.Suspense fallback={fallback}>
             <MonacoEditor
+              lineHeight={lineHeight}
               defaultValue={this.node.textContent}
               language={this.language}
               readOnly={!this.view.editable}
@@ -323,14 +333,12 @@ class CodeBlockNodeView extends NodeViewReactSelectable {
   }
 }
 
-const _Loading = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100px;
+const _Container = styled.div`
   margin: 16px 0;
-  border-radius: 8px;
+  position: relative;
+  min-height: 64px;
   padding: 8px 0;
+  border-radius: 8px;
   background-color: #fffffe;
   border: 1px solid #aeaeae;
 
@@ -338,4 +346,15 @@ const _Loading = styled.div`
     background-color: #1e1e1e;
     border: 1px solid transparent;
   }
+`
+
+const _Loading = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `
