@@ -41,10 +41,10 @@ export interface VideoBlockOptions {
 }
 
 export interface VideoBlockAttrs {
-  naturalWidth?: number | null
-  naturalHeight?: number | null
-  thumbnail?: string | null
-  dashArchiveSrc?: string | null
+  naturalWidth: number | null
+  naturalHeight: number | null
+  thumbnail: string | null
+  dashArchiveSrc: string | null
 }
 
 export default class VideoBlock extends Node {
@@ -85,11 +85,19 @@ export default class VideoBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="video_block"]',
-          getAttrs: dom => (dom as HTMLElement).dataset,
+          getAttrs: (dom): VideoBlockAttrs => {
+            const { dataset } = dom as HTMLElement
+            return {
+              thumbnail: dataset['thumbnail'] || null,
+              naturalWidth: Number(dataset['naturalWidth']) || null,
+              naturalHeight: Number(dataset['naturalHeight']) || null,
+              dashArchiveSrc: dataset['dashArchiveSrc'] || null,
+            }
+          },
         },
       ],
       toDOM: node => {
-        const attrs: VideoBlockAttrs = node.attrs
+        const attrs = node.attrs as VideoBlockAttrs
         return [
           'figure',
           {
@@ -346,7 +354,7 @@ class VideoBlockNodeView extends NodeViewReact {
   private isDragging = false
 
   private get attrs(): VideoBlockAttrs {
-    return this.node.attrs
+    return this.node.attrs as VideoBlockAttrs
   }
 
   stopEvent = (e: Event) => {

@@ -35,10 +35,10 @@ export interface ImageBlockOptions {
 }
 
 export interface ImageBlockAttrs {
-  src?: string | null
-  naturalWidth?: number | null
-  naturalHeight?: number | null
-  thumbnail?: string | null
+  src: string | null
+  naturalWidth: number | null
+  naturalHeight: number | null
+  thumbnail: string | null
 }
 
 export default class ImageBlock extends Node {
@@ -93,18 +93,27 @@ export default class ImageBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="image_block"]',
-          getAttrs: dom => (dom as HTMLElement).dataset,
+          getAttrs: (dom): ImageBlockAttrs => {
+            const { dataset } = dom as HTMLElement
+            return {
+              src: dataset['src'] || null,
+              thumbnail: dataset['thumbnail'] || null,
+              naturalWidth: Number(dataset['naturalWidth']) || null,
+              naturalHeight: Number(dataset['naturalHeight']) || null,
+            }
+          },
         },
       ],
       toDOM: node => {
+        const attrs = node.attrs as ImageBlockAttrs
         return [
           'figure',
           {
             'data-type': 'image_block',
-            'data-src': node.attrs.src,
-            'data-thumbnail': node.attrs.thumbnail,
-            'data-natural-width': node.attrs.naturalWidth,
-            'data-natural-height': node.attrs.naturalHeight,
+            'data-src': attrs.src,
+            'data-thumbnail': attrs.thumbnail,
+            'data-natural-width': attrs.naturalWidth?.toString(),
+            'data-natural-height': attrs.naturalHeight?.toString(),
           },
           ['img'],
           ['figcaption', 0],
@@ -204,7 +213,7 @@ class ImageBlockNodeView extends NodeViewReact {
   private isDragging = false
 
   private get attrs(): ImageBlockAttrs {
-    return this.node.attrs
+    return this.node.attrs as ImageBlockAttrs
   }
 
   stopEvent = (e: Event) => {
