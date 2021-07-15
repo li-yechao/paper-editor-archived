@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import styled from '@emotion/styled'
 import { InputRule, textblockTypeInputRule } from 'prosemirror-inputrules'
 import { Node as ProsemirrorNode, NodeSpec, NodeType, Slice } from 'prosemirror-model'
 import { Plugin, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
-import { EditorView } from 'prosemirror-view'
-import React from 'react'
-import { useCallback } from 'react'
-import { useState } from 'react'
 import { v4 } from 'uuid'
-import CupertinoActivityIndicator from '../../components/CupertinoActivityIndicator'
-import { LazyComponent } from '../lib/LazyComponent'
-import Node, { NodeViewCreator, NodeViewReactSelectable } from './Node'
+import Node, { NodeViewCreator } from '../Node'
+import CodeBlockNodeView, { MonacoEditorTransactionMetaKey } from './CodeBlockNodeView'
 
-type MonacoInstance = import('../lib/MonacoEditor').MonacoInstance
-
-const MonacoEditorTransactionMetaKey = 'MonacoEditorClientID'
+type MonacoInstance = import('./MonacoEditor').MonacoInstance
 
 export default class CodeBlock extends Node {
   constructor(public options: { clientID?: string | number } = {}) {
@@ -192,169 +184,3 @@ export default class CodeBlock extends Node {
     }
   }
 }
-
-interface MonacoEditorInstanceManager {
-  setMonacoEditorInstanceByNode(node: ProsemirrorNode, instance: MonacoInstance): void
-  getMonacoEditorInstanceByNode(node: ProsemirrorNode): MonacoInstance | undefined
-  deleteMonacoEditorInstanceByNode(node: ProsemirrorNode): void
-}
-
-class CodeBlockNodeView extends NodeViewReactSelectable {
-  constructor(
-    node: ProsemirrorNode,
-    private view: EditorView,
-    private getPos: () => number,
-    private clientId: string | number,
-    private monacoInstanceManager: MonacoEditorInstanceManager
-  ) {
-    super(node)
-    this.dom.append(this.reactDOM)
-    this._render()
-  }
-
-  dom = document.createElement('div')
-
-  reactDOM = document.createElement('div')
-
-  stopEvent = () => true
-
-  ignoreMutation = () => true
-
-  deselectNode = () => {}
-
-  get language() {
-    return this.node.attrs.language
-  }
-
-  onInsert = (index: number, text: string) => {
-    const pos = this.getPos() + 1
-    this.view.dispatch(
-      this.view.state.tr
-        .insertText(text, pos + index)
-        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
-    )
-  }
-
-  onReplace = (index: number, length: number, text: string) => {
-    const pos = this.getPos() + 1
-    this.view.dispatch(
-      this.view.state.tr
-        .insertText(text, pos + index, pos + index + length)
-        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
-    )
-  }
-
-  onDelete = (index: number, length: number) => {
-    const pos = this.getPos() + 1
-    this.view.dispatch(
-      this.view.state.tr
-        .delete(pos + index, pos + index + length)
-        .setMeta(MonacoEditorTransactionMetaKey, this.clientId)
-    )
-  }
-
-  onLanguageChange = (language: string) => {
-    this.view.dispatch(
-      this.view.state.tr.setNodeMarkup(this.getPos(), undefined, {
-        ...this.node.attrs,
-        language,
-      })
-    )
-  }
-
-  private isAtFirstPosition = false
-
-  private MonacoEditor = React.lazy(() => import('../lib/MonacoEditor'))
-
-  component = () => {
-    const { MonacoEditor } = this
-    const [visible, setVisible] = useState(false)
-
-    const onVisibleChange = useCallback((visible: boolean) => {
-      visible && setVisible(true)
-    }, [])
-
-    const fallback = (
-      <_Loading>
-        <CupertinoActivityIndicator size={24} />
-      </_Loading>
-    )
-
-    // TODO: Move extras (like language select and spacing) to this component.
-    const lineHeight = 18
-    const extraHeight = 64
-
-    return (
-      <LazyComponent
-        component={_Container}
-        onVisibleChange={onVisibleChange}
-        style={{ minHeight: extraHeight + lineHeight * this.node.textContent.split('\n').length }}
-      >
-        {!visible ? (
-          fallback
-        ) : (
-          <React.Suspense fallback={fallback}>
-            <MonacoEditor
-              lineHeight={lineHeight}
-              defaultValue={this.node.textContent}
-              language={this.language}
-              readOnly={!this.view.editable}
-              focused={this.selected}
-              clientID={this.clientId}
-              onInited={e => this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)}
-              onDestroyed={() =>
-                this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)
-              }
-              onInsert={this.onInsert}
-              onReplace={this.onReplace}
-              onDelete={this.onDelete}
-              onLanguageChange={this.onLanguageChange}
-              onKeyDown={(_, editor) => {
-                this.isAtFirstPosition =
-                  editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
-              }}
-              onKeyUp={e => {
-                // KeyCode.Backspace is 1
-                if (e.keyCode === 1 && this.isAtFirstPosition) {
-                  this.view.dispatch(
-                    this.view.state.tr.setNodeMarkup(
-                      this.getPos(),
-                      this.view.state.schema.nodes['paragraph']
-                    )
-                  )
-                  this.view.focus()
-                }
-              }}
-            />
-          </React.Suspense>
-        )}
-      </LazyComponent>
-    )
-  }
-}
-
-const _Container = styled.div`
-  margin: 16px 0;
-  position: relative;
-  min-height: 64px;
-  padding: 8px 0;
-  border-radius: 8px;
-  background-color: #fffffe;
-  border: 1px solid #aeaeae;
-
-  @media (prefers-color-scheme: dark) {
-    background-color: #1e1e1e;
-    border: 1px solid transparent;
-  }
-`
-
-const _Loading = styled.div`
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`
