@@ -525,7 +525,7 @@ class VideoBlockNodeView extends NodeViewReact {
 
         {state.current.loading && (
           <_Loading>
-            <_CupertinoActivityIndicator />
+            <_CupertinoActivityIndicator size={24} />
             <ProgressText
               status={state.current.videoFile?.status}
               ratio={state.current.videoFile?.ratio}
@@ -656,8 +656,5 @@ const _Loading = styled.div`
 `
 
 const _CupertinoActivityIndicator = styled(CupertinoActivityIndicator)`
-  width: 56px;
-  height: 56px;
-  color: currentColor;
-  margin: 0;
+  margin: 8px;
 `

@@ -276,7 +276,7 @@ class CodeBlockNodeView extends NodeViewReactSelectable {
 
     const fallback = (
       <_Loading>
-        <CupertinoActivityIndicator />
+        <CupertinoActivityIndicator size={24} />
       </_Loading>
     )
 
