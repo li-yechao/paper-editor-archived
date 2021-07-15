@@ -22,7 +22,7 @@ import dashjs from 'dashjs'
 import { Keymap } from 'prosemirror-commands'
 import { Node as ProsemirrorNode, NodeSpec, NodeType, Schema } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
-import { removeParentNodeOfType } from 'prosemirror-utils'
+import { removeParentNodeOfType, setTextSelection } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
@@ -140,13 +140,20 @@ export default class VideoBlock extends Node {
       },
       // NOTE: Remove this node when backspace at first position.
       Backspace: (state, dispatch) => {
-        const { $from, $to, empty } = state.selection
-        const node = $from.node()
-        if (!dispatch || !empty || node.type.name !== this.contentName || node !== $to.node()) {
-          return false
-        }
-        if ($from.parentOffset === 0) {
-          dispatch(removeParentNodeOfType(type)(state.tr))
+        const { $from, empty } = state.selection
+        const fromNode = $from.node()
+        if (
+          dispatch &&
+          empty &&
+          fromNode.type.name === this.contentName &&
+          $from.parentOffset === 0
+        ) {
+          dispatch(
+            setTextSelection(
+              $from.pos - 2,
+              -1
+            )(removeParentNodeOfType(type)(state.tr)).scrollIntoView()
+          )
           return true
         }
         return false
