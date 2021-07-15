@@ -22,8 +22,23 @@ export default function toggleMark(type: MarkType) {
   return (state: EditorState, dispatch?: (tr: Transaction) => void) => {
     const { empty, $from } = state.selection
     if (dispatch && empty && type.isInSet($from.marks())) {
-      const start = $from.posAtIndex($from.index())
-      const length = $from.parent.maybeChild($from.index())?.text?.length
+      let index = $from.index()
+      let start = $from.posAtIndex(index)
+      let length = $from.parent.maybeChild(index)?.text?.length
+
+      if (index > 0) {
+        if (
+          // The start at the end of mark
+          !length ||
+          // The start at the start of siblings or mark
+          !state.doc.rangeHasMark(start, start + length, type)
+        ) {
+          index -= 1
+          start = $from.posAtIndex(index)
+          length = $from.parent.maybeChild(index)?.text?.length
+        }
+      }
+
       if (length) {
         dispatch(state.tr.removeMark(start, start + length, type))
         return true
