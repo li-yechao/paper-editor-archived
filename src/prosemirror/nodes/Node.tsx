@@ -15,24 +15,49 @@
 import { StylesProvider } from '@material-ui/core'
 import { Keymap } from 'prosemirror-commands'
 import { InputRule } from 'prosemirror-inputrules'
-import { NodeSpec, Node as ProsemirrorNode, NodeType, Schema } from 'prosemirror-model'
+import {
+  DOMOutputSpec,
+  NodeSpec,
+  NodeType,
+  Node as ProsemirrorNode,
+  ParseRule,
+  Schema,
+} from 'prosemirror-model'
 import { Decoration, EditorView, NodeView as ProsemirrorNodeView } from 'prosemirror-view'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import Extension, { ExtensionType } from '../lib/Extension'
 
-export type NodeViewCreator = (args: {
-  node: ProsemirrorNode
+export { Node as ProsemirrorNode } from 'prosemirror-model'
+
+export type StrictProsemirrorNode<T extends { [key: string]: any } = {}> = ProsemirrorNode & {
+  attrs: T
+}
+
+export type NodeViewCreator<T> = (args: {
+  node: StrictProsemirrorNode<T>
   view: EditorView
   getPos: (() => number) | boolean
-}) => ProsemirrorNodeView
+}) => ProsemirrorNodeView | NodeView<T>
 
-export default abstract class Node extends Extension {
+export interface StrictParseRule<T> extends ParseRule {
+  getAttrs?: ((p: globalThis.Node | string) => T | false | null | undefined) | null
+}
+
+export interface StrictNodeSpec<T> extends Omit<NodeSpec, 'toDOM'> {
+  attrs: { [key in keyof T]: { default: T[key] } }
+
+  toDOM?: ((node: StrictProsemirrorNode<T>) => DOMOutputSpec) | null
+
+  parseDOM?: StrictParseRule<T>[] | null
+}
+
+export default abstract class Node<T> extends Extension {
   get type(): ExtensionType {
     return 'node'
   }
 
-  abstract get schema(): NodeSpec
+  abstract get schema(): StrictNodeSpec<T>
 
   get schema_extra(): { [name: string]: NodeSpec } {
     return {}
@@ -46,17 +71,17 @@ export default abstract class Node extends Extension {
     return {}
   }
 
-  get nodeView(): NodeViewCreator | undefined {
+  get nodeView(): NodeViewCreator<T> | undefined {
     return undefined
   }
 }
 
-export abstract class NodeView implements ProsemirrorNodeView {
+export abstract class NodeView<T> {
   abstract dom: HTMLElement
 
   contentDOM?: HTMLElement
 
-  update?: (node: ProsemirrorNode, decorations: Decoration[]) => boolean
+  update?: (node: StrictProsemirrorNode<T>, decorations: Decoration[]) => boolean
 
   selectNode?: () => void
 
@@ -71,15 +96,15 @@ export abstract class NodeView implements ProsemirrorNodeView {
   destroy?: () => void
 }
 
-export abstract class NodeViewReact extends NodeView {
-  constructor(public node: ProsemirrorNode) {
+export abstract class NodeViewReact<T> extends NodeView<T> {
+  constructor(public node: StrictProsemirrorNode<T>) {
     super()
     setTimeout(() => this._render())
   }
 
   abstract reactDOM: HTMLElement
 
-  update = (updatedNode: ProsemirrorNode, _decorations: Decoration[]) => {
+  update = (updatedNode: StrictProsemirrorNode<T>, _decorations: Decoration[]) => {
     if (updatedNode.type !== this.node.type) {
       return false
     }
@@ -92,20 +117,20 @@ export abstract class NodeViewReact extends NodeView {
     ReactDOM.unmountComponentAtNode(this.reactDOM)
   }
 
-  abstract component: React.ComponentType
+  abstract component: React.ComponentType<{ node: StrictProsemirrorNode<T> }>
 
   _render() {
     ReactDOM.render(
       <StylesProvider injectFirst>
-        <this.component />
+        <this.component node={this.node} />
       </StylesProvider>,
       this.reactDOM
     )
   }
 }
 
-export abstract class NodeViewReactSelectable extends NodeViewReact {
-  constructor(node: ProsemirrorNode) {
+export abstract class NodeViewReactSelectable<T> extends NodeViewReact<T> {
+  constructor(node: StrictProsemirrorNode<T>) {
     super(node)
   }
 

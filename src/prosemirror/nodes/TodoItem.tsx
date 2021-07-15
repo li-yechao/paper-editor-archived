@@ -16,13 +16,17 @@ import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Checkbox } from '@material-ui/core'
 import { Keymap } from 'prosemirror-commands'
-import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
+import { NodeType } from 'prosemirror-model'
 import { splitListItem } from 'prosemirror-schema-list'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
-import Node, { NodeViewReact, NodeViewCreator } from './Node'
+import Node, { NodeViewReact, NodeViewCreator, StrictNodeSpec, StrictProsemirrorNode } from './Node'
 
-export default class TodoItem extends Node {
+export interface TodoItemAttrs {
+  checked: boolean | null
+}
+
+export default class TodoItem extends Node<TodoItemAttrs> {
   constructor(private options: { readonly todoItemReadOnly?: boolean } = {}) {
     super()
   }
@@ -31,7 +35,7 @@ export default class TodoItem extends Node {
     return 'todo_item'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<TodoItemAttrs> {
     return {
       attrs: { checked: { default: false } },
       content: 'paragraph block*',
@@ -64,7 +68,7 @@ export default class TodoItem extends Node {
     }
   }
 
-  get nodeView(): NodeViewCreator {
+  get nodeView(): NodeViewCreator<TodoItemAttrs> {
     return ({ node, view, getPos }) => {
       if (typeof getPos !== 'function') {
         throw new Error(`Invalid getPos ${getPos}`)
@@ -75,9 +79,9 @@ export default class TodoItem extends Node {
   }
 }
 
-class TodoItemNodeView extends NodeViewReact {
+class TodoItemNodeView extends NodeViewReact<TodoItemAttrs> {
   constructor(
-    node: ProsemirrorNode,
+    node: StrictProsemirrorNode<TodoItemAttrs>,
     private view: EditorView,
     private getPos: () => number,
     private todoItemReadOnly: boolean

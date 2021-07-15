@@ -20,7 +20,7 @@ import PauseRoundedIcon from '@material-ui/icons/PauseRounded'
 import PlayArrowRoundedIcon from '@material-ui/icons/PlayArrowRounded'
 import dashjs from 'dashjs'
 import { Keymap } from 'prosemirror-commands'
-import { Node as ProsemirrorNode, NodeSpec, NodeType, Schema } from 'prosemirror-model'
+import { NodeSpec, NodeType, Schema } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType, setTextSelection } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
@@ -30,7 +30,13 @@ import CupertinoActivityIndicator from '../../components/CupertinoActivityIndica
 import { StrictEventEmitter } from '../../utils/typed-events'
 import { getImageThumbnail, readAsDataURL } from '../lib/image'
 import { LazyComponent } from '../lib/LazyComponent'
-import Node, { NodeViewReact, NodeViewCreator } from './Node'
+import Node, {
+  NodeViewReact,
+  NodeViewCreator,
+  StrictNodeSpec,
+  StrictProsemirrorNode,
+  ProsemirrorNode,
+} from './Node'
 
 export interface VideoBlockOptions {
   upload: (file: File | File[]) => Promise<string>
@@ -47,7 +53,7 @@ export interface VideoBlockAttrs {
   dashArchiveSrc: string | null
 }
 
-export default class VideoBlock extends Node {
+export default class VideoBlock extends Node<VideoBlockAttrs> {
   constructor(private options: VideoBlockOptions) {
     super()
   }
@@ -58,7 +64,7 @@ export default class VideoBlock extends Node {
       schema.nodes[this.contentName]!.create(undefined, schema.text(file.name))
     )
     ;(node as any).file = file
-    return node
+    return node as any
   }
 
   get name(): string {
@@ -69,7 +75,7 @@ export default class VideoBlock extends Node {
     return `${this.name}_content`
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<VideoBlockAttrs> {
     return {
       attrs: {
         naturalWidth: { default: null },
@@ -85,19 +91,21 @@ export default class VideoBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="video_block"]',
-          getAttrs: (dom): VideoBlockAttrs => {
-            const { dataset } = dom as HTMLElement
-            return {
-              thumbnail: dataset['thumbnail'] || null,
-              naturalWidth: Number(dataset['naturalWidth']) || null,
-              naturalHeight: Number(dataset['naturalHeight']) || null,
-              dashArchiveSrc: dataset['dashArchiveSrc'] || null,
+          getAttrs: dom => {
+            if (dom instanceof HTMLElement) {
+              const { dataset } = dom
+              return {
+                thumbnail: dataset['thumbnail'] || null,
+                naturalWidth: Number(dataset['naturalWidth']) || null,
+                naturalHeight: Number(dataset['naturalHeight']) || null,
+                dashArchiveSrc: dataset['dashArchiveSrc'] || null,
+              }
             }
+            return undefined
           },
         },
       ],
-      toDOM: node => {
-        const attrs = node.attrs as VideoBlockAttrs
+      toDOM: ({ attrs }) => {
         return [
           'figure',
           {
@@ -169,7 +177,7 @@ export default class VideoBlock extends Node {
     }
   }
 
-  get nodeView(): NodeViewCreator {
+  get nodeView(): NodeViewCreator<VideoBlockAttrs> {
     return ({ node, view, getPos }) => {
       if (typeof getPos !== 'function') {
         throw new Error(`Invalid getPos ${getPos}`)
@@ -327,9 +335,9 @@ class VideoFile extends StrictEventEmitter<{}, {}, { progress: (e: VideoFile) =>
   }
 }
 
-class VideoBlockNodeView extends NodeViewReact {
+class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
   constructor(
-    node: ProsemirrorNode,
+    node: StrictProsemirrorNode<VideoBlockAttrs>,
     private view: EditorView,
     private getPos: () => number,
     private options: VideoBlockOptions
@@ -353,8 +361,8 @@ class VideoBlockNodeView extends NodeViewReact {
 
   private isDragging = false
 
-  private get attrs(): VideoBlockAttrs {
-    return this.node.attrs as VideoBlockAttrs
+  private get attrs() {
+    return this.node.attrs
   }
 
   stopEvent = (e: Event) => {

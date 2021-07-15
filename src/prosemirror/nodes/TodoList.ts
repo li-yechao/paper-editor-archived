@@ -13,16 +13,19 @@
 // limitations under the License.
 
 import { InputRule, wrappingInputRule } from 'prosemirror-inputrules'
-import { NodeSpec, NodeType } from 'prosemirror-model'
-import Node from './Node'
+import { NodeType } from 'prosemirror-model'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class TodoList extends Node {
+export interface TodoListAttrs {}
+
+export default class TodoList extends Node<TodoListAttrs> {
   get name(): string {
     return 'todo_list'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<TodoListAttrs> {
     return {
+      attrs: {},
       content: 'todo_item+',
       group: 'block',
       parseDOM: [{ tag: 'ul[data-type="todo_list"]' }],

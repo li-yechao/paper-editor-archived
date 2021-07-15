@@ -31,8 +31,8 @@ export default class Manager {
 
   readonly schema: Schema
 
-  get nodes(): Node[] {
-    return <Node[]>this.extensions.filter(i => i.type === 'node')
+  get nodes(): Node<any>[] {
+    return <Node<any>[]>this.extensions.filter(i => i.type === 'node')
   }
 
   get nodeSpecs(): { [key: string]: NodeSpec } {

@@ -13,16 +13,19 @@
 // limitations under the License.
 
 import { InputRule, wrappingInputRule } from 'prosemirror-inputrules'
-import { NodeSpec, NodeType } from 'prosemirror-model'
-import Node from './Node'
+import { NodeType } from 'prosemirror-model'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class Blockquote extends Node {
+export interface BlockquoteAttrs {}
+
+export default class Blockquote extends Node<BlockquoteAttrs> {
   get name(): string {
     return 'blockquote'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<BlockquoteAttrs> {
     return {
+      attrs: {},
       content: 'block+',
       group: 'block',
       parseDOM: [{ tag: 'blockquote' }],

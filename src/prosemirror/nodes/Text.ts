@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { NodeSpec } from 'prosemirror-model'
-import Node from './Node'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class Text extends Node {
+export interface TextAttrs {}
+
+export default class Text extends Node<TextAttrs> {
   get name(): string {
     return 'text'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<TextAttrs> {
     return {
+      attrs: {},
       group: 'inline',
     }
   }

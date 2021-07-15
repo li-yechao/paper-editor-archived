@@ -13,17 +13,20 @@
 // limitations under the License.
 
 import { Keymap } from 'prosemirror-commands'
-import { NodeSpec, NodeType } from 'prosemirror-model'
+import { NodeType } from 'prosemirror-model'
 import { splitListItem } from 'prosemirror-schema-list'
-import Node from './Node'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class ListItem extends Node {
+export interface ListItemAttrs {}
+
+export default class ListItem extends Node<ListItemAttrs> {
   get name(): string {
     return 'list_item'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<ListItemAttrs> {
     return {
+      attrs: {},
       content: 'paragraph block*',
       defining: true,
       draggable: true,

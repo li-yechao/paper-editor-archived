@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { NodeSpec } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
-import Node from './Node'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class Paragraph extends Node {
+export interface ParagraphAttrs {}
+
+export default class Paragraph extends Node<ParagraphAttrs> {
   get name(): string {
     return 'paragraph'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<ParagraphAttrs> {
     return {
+      attrs: {},
       content: 'inline*',
       group: 'block',
       parseDOM: [{ tag: 'p' }],

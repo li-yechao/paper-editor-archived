@@ -14,12 +14,12 @@
 
 import styled from '@emotion/styled'
 import { Select } from '@material-ui/core'
-import { Node as ProsemirrorNode } from 'prosemirror-model'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useState } from 'react'
 import CupertinoActivityIndicator from '../../../components/CupertinoActivityIndicator'
 import { LazyComponent } from '../../lib/LazyComponent'
-import { NodeViewReactSelectable } from '../Node'
+import { NodeViewReactSelectable, StrictProsemirrorNode } from '../Node'
+import { CodeBlockAttrs } from './CodeBlock'
 import { LANGUAGES } from './languages'
 
 type MonacoInstance = import('./MonacoEditor').MonacoInstance
@@ -29,14 +29,19 @@ export const MonacoEditorTransactionMetaKey = 'MonacoEditorClientID'
 const EDITOR_LINE_HEIGHT = 18
 
 export interface MonacoEditorInstanceManager {
-  setMonacoEditorInstanceByNode(node: ProsemirrorNode, instance: MonacoInstance): void
-  getMonacoEditorInstanceByNode(node: ProsemirrorNode): MonacoInstance | undefined
-  deleteMonacoEditorInstanceByNode(node: ProsemirrorNode): void
+  setMonacoEditorInstanceByNode(
+    node: StrictProsemirrorNode<CodeBlockAttrs>,
+    instance: MonacoInstance
+  ): void
+  getMonacoEditorInstanceByNode(
+    node: StrictProsemirrorNode<CodeBlockAttrs>
+  ): MonacoInstance | undefined
+  deleteMonacoEditorInstanceByNode(node: StrictProsemirrorNode<CodeBlockAttrs>): void
 }
 
-export default class CodeBlockNodeView extends NodeViewReactSelectable {
+export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlockAttrs> {
   constructor(
-    node: ProsemirrorNode,
+    node: StrictProsemirrorNode<CodeBlockAttrs>,
     private view: EditorView,
     private getPos: () => number,
     private clientId: string | number,
@@ -101,89 +106,92 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable {
 
   private MonacoEditor = React.lazy(() => import('./MonacoEditor'))
 
-  component = () => {
-    const { MonacoEditor } = this
-    const [visible, setVisible] = useState(false)
+  component = React.memo(
+    (_props: { node: StrictProsemirrorNode<CodeBlockAttrs> }) => {
+      const { MonacoEditor } = this
+      const [visible, setVisible] = useState(false)
 
-    const onVisibleChange = useCallback((visible: boolean) => {
-      visible && setVisible(true)
-    }, [])
+      const onVisibleChange = useCallback((visible: boolean) => {
+        visible && setVisible(true)
+      }, [])
 
-    const handleLanguageChange = useCallback((e: React.ChangeEvent<{ value: any }>) => {
-      this.onLanguageChange?.(e.target.value)
-    }, [])
+      const handleLanguageChange = useCallback((e: React.ChangeEvent<{ value: any }>) => {
+        this.onLanguageChange?.(e.target.value)
+      }, [])
 
-    const handleLanguageMouseUp = useCallback((e: React.MouseEvent) => e.stopPropagation(), [])
+      const handleLanguageMouseUp = useCallback((e: React.MouseEvent) => e.stopPropagation(), [])
 
-    const fallback = (
-      <_Loading>
-        <CupertinoActivityIndicator size={24} />
-      </_Loading>
-    )
+      const fallback = (
+        <_Loading>
+          <CupertinoActivityIndicator size={24} />
+        </_Loading>
+      )
 
-    return (
-      <LazyComponent component={_Container} onVisibleChange={onVisibleChange}>
-        <_LanguageSelect
-          native
-          variant="outlined"
-          value={this.language}
-          disabled={!this.view.editable}
-          onChange={handleLanguageChange}
-          onMouseUp={handleLanguageMouseUp}
-        >
-          {LANGUAGES.map(lang => (
-            <option key={lang} value={lang}>
-              {lang}
-            </option>
-          ))}
-        </_LanguageSelect>
+      return (
+        <LazyComponent component={_Container} onVisibleChange={onVisibleChange}>
+          <_LanguageSelect
+            native
+            variant="outlined"
+            value={this.language}
+            disabled={!this.view.editable}
+            onChange={handleLanguageChange}
+            onMouseUp={handleLanguageMouseUp}
+          >
+            {LANGUAGES.map(lang => (
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
+            ))}
+          </_LanguageSelect>
 
-        <_Content
-          style={{ minHeight: EDITOR_LINE_HEIGHT * this.node.textContent.split('\n').length + 6 }}
-        >
-          {!visible ? (
-            fallback
-          ) : (
-            <React.Suspense fallback={fallback}>
-              <MonacoEditor
-                lineHeight={EDITOR_LINE_HEIGHT}
-                defaultValue={this.node.textContent}
-                language={this.language || undefined}
-                readOnly={!this.view.editable}
-                focused={this.selected}
-                clientID={this.clientId}
-                onInited={e =>
-                  this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)
-                }
-                onDestroyed={() =>
-                  this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)
-                }
-                onInsert={this.onInsert}
-                onReplace={this.onReplace}
-                onDelete={this.onDelete}
-                onKeyDown={(_, editor) => {
-                  this.isAtFirstPosition =
-                    editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
-                }}
-                onKeyUp={e => {
-                  // KeyCode.Backspace is 1
-                  if (e.keyCode === 1 && this.isAtFirstPosition) {
-                    this.view.dispatch(
-                      this.view.state.tr.setNodeMarkup(
-                        this.getPos(),
-                        this.view.state.schema.nodes['paragraph']
-                      )
-                    )
-                    this.view.focus()
+          <_Content
+            style={{ minHeight: EDITOR_LINE_HEIGHT * this.node.textContent.split('\n').length + 6 }}
+          >
+            {!visible ? (
+              fallback
+            ) : (
+              <React.Suspense fallback={fallback}>
+                <MonacoEditor
+                  lineHeight={EDITOR_LINE_HEIGHT}
+                  defaultValue={this.node.textContent}
+                  language={this.language || undefined}
+                  readOnly={!this.view.editable}
+                  focused={this.selected}
+                  clientID={this.clientId}
+                  onInited={e =>
+                    this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)
                   }
-                }}
-              />
-            </React.Suspense>
-          )}
-        </_Content>
-      </LazyComponent>
-    )
-  }
+                  onDestroyed={() =>
+                    this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)
+                  }
+                  onInsert={this.onInsert}
+                  onReplace={this.onReplace}
+                  onDelete={this.onDelete}
+                  onKeyDown={(_, editor) => {
+                    this.isAtFirstPosition =
+                      editor.getPosition()?.equals({ lineNumber: 1, column: 1 }) ?? false
+                  }}
+                  onKeyUp={e => {
+                    // KeyCode.Backspace is 1
+                    if (e.keyCode === 1 && this.isAtFirstPosition) {
+                      this.view.dispatch(
+                        this.view.state.tr.setNodeMarkup(
+                          this.getPos(),
+                          this.view.state.schema.nodes['paragraph']
+                        )
+                      )
+                      this.view.focus()
+                    }
+                  }}
+                />
+              </React.Suspense>
+            )}
+          </_Content>
+        </LazyComponent>
+      )
+    },
+    (prev, next) => prev.node.attrs.language !== next.node.attrs.language
+  )
 }
 
 const _Container = styled.div`

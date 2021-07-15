@@ -16,7 +16,7 @@ import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Keymap } from 'prosemirror-commands'
 import { Schema } from 'prosemirror-model'
-import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
+import { NodeSpec, NodeType } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType, setTextSelection } from 'prosemirror-utils'
 import { EditorView } from 'prosemirror-view'
@@ -24,7 +24,13 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { readAsDataURL, getImageThumbnail } from '../lib/image'
 import { LazyComponent } from '../lib/LazyComponent'
-import Node, { NodeViewReact, NodeViewCreator } from './Node'
+import Node, {
+  NodeViewReact,
+  NodeViewCreator,
+  StrictNodeSpec,
+  StrictProsemirrorNode,
+  ProsemirrorNode,
+} from './Node'
 
 export interface ImageBlockOptions {
   upload: (file: File) => Promise<string>
@@ -41,7 +47,7 @@ export interface ImageBlockAttrs {
   thumbnail: string | null
 }
 
-export default class ImageBlock extends Node {
+export default class ImageBlock extends Node<ImageBlockAttrs> {
   constructor(private options: ImageBlockOptions) {
     super()
   }
@@ -77,7 +83,7 @@ export default class ImageBlock extends Node {
     return `${this.name}_content`
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<ImageBlockAttrs> {
     return {
       attrs: {
         src: { default: null },
@@ -93,19 +99,21 @@ export default class ImageBlock extends Node {
       parseDOM: [
         {
           tag: 'figure[data-type="image_block"]',
-          getAttrs: (dom): ImageBlockAttrs => {
-            const { dataset } = dom as HTMLElement
-            return {
-              src: dataset['src'] || null,
-              thumbnail: dataset['thumbnail'] || null,
-              naturalWidth: Number(dataset['naturalWidth']) || null,
-              naturalHeight: Number(dataset['naturalHeight']) || null,
+          getAttrs: dom => {
+            if (dom instanceof HTMLElement) {
+              const { dataset } = dom
+              return {
+                src: dataset['src'] || null,
+                thumbnail: dataset['thumbnail'] || null,
+                naturalWidth: Number(dataset['naturalWidth']) || null,
+                naturalHeight: Number(dataset['naturalHeight']) || null,
+              }
             }
+            return undefined
           },
         },
       ],
-      toDOM: node => {
-        const attrs = node.attrs as ImageBlockAttrs
+      toDOM: ({ attrs }) => {
         return [
           'figure',
           {
@@ -177,7 +185,7 @@ export default class ImageBlock extends Node {
     }
   }
 
-  get nodeView(): NodeViewCreator {
+  get nodeView(): NodeViewCreator<ImageBlockAttrs> {
     return ({ node, view, getPos }) => {
       if (typeof getPos !== 'function') {
         throw new Error(`Invalid getPos ${getPos}`)
@@ -188,9 +196,9 @@ export default class ImageBlock extends Node {
   }
 }
 
-class ImageBlockNodeView extends NodeViewReact {
+class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
   constructor(
-    node: ProsemirrorNode,
+    node: StrictProsemirrorNode<ImageBlockAttrs>,
     private view: EditorView,
     private getPos: () => number,
     private options: ImageBlockOptions
@@ -212,8 +220,8 @@ class ImageBlockNodeView extends NodeViewReact {
 
   private isDragging = false
 
-  private get attrs(): ImageBlockAttrs {
-    return this.node.attrs as ImageBlockAttrs
+  private get attrs() {
+    return this.node.attrs
   }
 
   stopEvent = (e: Event) => {

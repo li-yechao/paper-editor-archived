@@ -13,16 +13,19 @@
 // limitations under the License.
 
 import { InputRule, wrappingInputRule } from 'prosemirror-inputrules'
-import { NodeSpec, NodeType } from 'prosemirror-model'
-import Node from './Node'
+import { NodeType } from 'prosemirror-model'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class OrderedList extends Node {
+export interface OrderedListAttrs {}
+
+export default class OrderedList extends Node<OrderedListAttrs> {
   get name(): string {
     return 'ordered_list'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<OrderedListAttrs> {
     return {
+      attrs: {},
       content: 'list_item+',
       group: 'block',
       parseDOM: [{ tag: 'ol' }],

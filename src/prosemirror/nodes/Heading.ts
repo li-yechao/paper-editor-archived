@@ -14,15 +14,19 @@
 
 import { css } from '@emotion/css'
 import { InputRule, textblockTypeInputRule } from 'prosemirror-inputrules'
-import { Node as ProsemirrorNode, NodeSpec, NodeType } from 'prosemirror-model'
-import Node, { NodeViewCreator, NodeView } from './Node'
+import { NodeType } from 'prosemirror-model'
+import Node, { NodeViewCreator, NodeView, StrictNodeSpec, StrictProsemirrorNode } from './Node'
 
-export default class Heading extends Node {
+export interface HeadingAttrs {
+  level: number
+}
+
+export default class Heading extends Node<HeadingAttrs> {
   get name(): string {
     return 'heading'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<HeadingAttrs> {
     return {
       attrs: { level: { default: 1 } },
       content: 'text*',
@@ -49,15 +53,15 @@ export default class Heading extends Node {
     ]
   }
 
-  get nodeView(): NodeViewCreator {
+  get nodeView(): NodeViewCreator<HeadingAttrs> {
     return ({ node }) => {
       return new HeadingNodeView(node)
     }
   }
 }
 
-class HeadingNodeView extends NodeView {
-  constructor(node: ProsemirrorNode) {
+class HeadingNodeView extends NodeView<HeadingAttrs> {
+  constructor(node: StrictProsemirrorNode<HeadingAttrs>) {
     super()
     this.dom = document.createElement(`h${node.attrs.level}`)
 

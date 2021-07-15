@@ -13,16 +13,19 @@
 // limitations under the License.
 
 import { InputRule, wrappingInputRule } from 'prosemirror-inputrules'
-import { NodeSpec, NodeType } from 'prosemirror-model'
-import Node from './Node'
+import { NodeType } from 'prosemirror-model'
+import Node, { StrictNodeSpec } from './Node'
 
-export default class BulletList extends Node {
+export interface BulletListAttrs {}
+
+export default class BulletList extends Node<BulletListAttrs> {
   get name(): string {
     return 'bullet_list'
   }
 
-  get schema(): NodeSpec {
+  get schema(): StrictNodeSpec<BulletListAttrs> {
     return {
+      attrs: {},
       content: 'list_item+',
       group: 'block',
       parseDOM: [{ tag: 'ul' }],
