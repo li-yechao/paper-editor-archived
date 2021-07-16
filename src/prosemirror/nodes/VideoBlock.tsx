@@ -564,30 +564,56 @@ const ProgressText = ({ status, ratio }: Pick<VideoFile, 'status' | 'ratio'>) =>
   )
 }
 
-const DashVideo = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
-  const ref = useRef<HTMLVideoElement>(null)
+const DashVideo = ({ src, ...props }: React.VideoHTMLAttributes<HTMLVideoElement>) => {
+  const video = useRef<HTMLVideoElement>(null)
   const player = useRef<dashjs.MediaPlayerClass>()
 
-  const initPlayer = useCallback((src?: string, autoPlay?: boolean) => {
-    if (ref.current) {
-      player.current?.destroy()
-      player.current = dashjs.MediaPlayer().create()
-      player.current.initialize(ref.current, src, autoPlay)
+  async function playerReady(player: dashjs.MediaPlayerClass) {
+    while (true) {
+      if (player.isReady()) {
+        break
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+  }
+
+  const destroyPlayer = useCallback(async () => {
+    const p = player.current
+    if (p) {
+      await playerReady(p)
+      p.destroy()
+    }
+  }, [])
+
+  const initPlayer = useCallback(async (src: string, autoPlay?: boolean) => {
+    await destroyPlayer()
+    if (video.current) {
+      const newPlayer = dashjs.MediaPlayer().create()
+      newPlayer.initialize(video.current, src, autoPlay)
+      await playerReady(newPlayer)
+      player.current = newPlayer
     }
   }, [])
 
   useEffect(() => {
-    initPlayer(props.src, props.autoPlay)
-    return () => player.current?.destroy()
-  }, [props.src])
+    if (src) {
+      initPlayer(src, props.autoPlay)
+    } else {
+      destroyPlayer()
+    }
+
+    return () => {
+      destroyPlayer()
+    }
+  }, [src])
 
   useEffect(() => {
     if (!player.current?.isReady()) {
       return
     }
     if (props.autoPlay) {
-      if (ref.current?.ended) {
-        initPlayer(props.src, props.autoPlay)
+      if (video.current?.ended && src) {
+        initPlayer(src, props.autoPlay)
       }
       player.current?.play()
     } else {
@@ -598,7 +624,7 @@ const DashVideo = (props: React.VideoHTMLAttributes<HTMLVideoElement>) => {
   return (
     <video
       {...props}
-      ref={ref}
+      ref={video}
       onEnded={e => {
         props.onEnded?.(e)
       }}
