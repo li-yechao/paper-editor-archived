@@ -425,9 +425,10 @@ class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
       update()
     }, [])
 
-    const togglePlaying = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const togglePlaying = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault()
       e.stopPropagation()
+      e.currentTarget.focus()
       setState({ playing: !state.current.playing })
     }, [])
 
@@ -527,7 +528,7 @@ class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
           />
         </_VideoContainer>
 
-        <_PlayButton onMouseUp={e => e.stopPropagation()} onClick={togglePlaying}>
+        <_PlayButton onClick={togglePlaying}>
           {state.current.playing ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
         </_PlayButton>
 
