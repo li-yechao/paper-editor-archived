@@ -190,7 +190,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
         </LazyComponent>
       )
     },
-    (prev, next) => prev.node.attrs.language !== next.node.attrs.language
+    (prev, next) => prev.node.attrs.language === next.node.attrs.language
   )
 }
 

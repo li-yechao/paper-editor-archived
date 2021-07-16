@@ -88,7 +88,13 @@ export default class Editor extends React.PureComponent<EditorProps> {
           ref={this.container}
           data-editable={!this.props.readOnly}
         />
-        {this.editorView && <FloatingToolbar editorView={this.editorView} menus={this.menus} />}
+        {this.editorView && (
+          <FloatingToolbar
+            editorView={this.editorView}
+            state={this.editorView.state}
+            menus={this.menus}
+          />
+        )}
       </>
     )
   }
