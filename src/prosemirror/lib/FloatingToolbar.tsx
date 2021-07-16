@@ -16,10 +16,10 @@ import styled from '@emotion/styled'
 import { Box, ButtonGroup, Popper, Tooltip, TooltipProps } from '@material-ui/core'
 import { EditorState } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useRef } from 'react'
 import { useEffect } from 'react'
-import { useUpdate } from 'react-use'
+import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './createMenuComponent'
 
 export interface FloatingToolbarProps {
@@ -93,7 +93,9 @@ const _FloatingToolbar = React.memo(
 )
 
 function useTooltipProps(editorView: EditorView) {
-  const update = useUpdate()
+  const _mounted = useMountedState()
+  const _update = useUpdate()
+  const update = useCallback(() => _mounted() && _update(), [])
 
   const state = useRef({
     isSelecting: false,
