@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Select } from '@material-ui/core'
 import { EditorView } from 'prosemirror-view'
@@ -48,11 +49,14 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
     private monacoInstanceManager: MonacoEditorInstanceManager
   ) {
     super(node)
+    this.dom.classList.add(css`
+      margin: 1em 0;
+    `)
     this.dom.append(this.reactDOM)
     this._render()
   }
 
-  dom = document.createElement('div')
+  dom = document.createElement('figure')
 
   reactDOM = document.createElement('div')
 
