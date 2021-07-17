@@ -17,7 +17,7 @@ import React from 'react'
 
 const CupertinoActivityIndicator = ({
   className,
-  size = 32,
+  size = 20,
 }: {
   className?: string
   size?: number
@@ -39,7 +39,7 @@ const CupertinoActivityIndicator = ({
 function strokeWidth(size: number): number {
   if (size >= 32) {
     return 3
-  } else if (size >= 24) {
+  } else if (size >= 16) {
     return 2
   }
   return 1
