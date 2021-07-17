@@ -345,6 +345,8 @@ class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
     super(node)
     this.reactDOM.contentEditable = 'false'
     this.dom.classList.add(css`
+      margin: 1em 0;
+
       > figcaption {
         text-align: center;
       }

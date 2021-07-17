@@ -206,6 +206,7 @@ class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
     super(node)
     this.reactDOM.contentEditable = 'false'
     this.dom.classList.add(css`
+      margin: 1em 0;
       text-align: center;
     `)
     this.dom.append(this.reactDOM, this.contentDOM)
