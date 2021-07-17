@@ -80,7 +80,7 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
   }
 
   get contentName(): string {
-    return `${this.name}_content`
+    return `${this.name}_caption`
   }
 
   get schema(): StrictNodeSpec<ImageBlockAttrs> {
