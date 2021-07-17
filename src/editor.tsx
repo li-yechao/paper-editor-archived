@@ -50,6 +50,7 @@ import ImageBlock, { ImageBlockOptions } from './prosemirror/nodes/ImageBlock'
 import ListItem from './prosemirror/nodes/ListItem'
 import OrderedList from './prosemirror/nodes/OrderedList'
 import Paragraph from './prosemirror/nodes/Paragraph'
+import TagList from './prosemirror/nodes/TagList'
 import Text from './prosemirror/nodes/Text'
 import Title from './prosemirror/nodes/Title'
 import TodoItem from './prosemirror/nodes/TodoItem'
@@ -204,6 +205,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
 
       new Doc(),
       new Text(),
+      new TagList(),
       new Title(),
       new Paragraph(),
       new Heading(),

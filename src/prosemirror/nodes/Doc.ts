@@ -24,7 +24,7 @@ export default class Doc extends Node<DocAttrs> {
   get schema(): StrictNodeSpec<DocAttrs> {
     return {
       attrs: {},
-      content: 'title block+',
+      content: 'title tag_list block+',
     }
   }
 }

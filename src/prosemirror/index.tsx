@@ -196,6 +196,28 @@ const _EditorContainer = styled.div`
     }
   }
 
+  ul[data-type='tag_list'] {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+
+    li {
+      margin: 4px 8px;
+      min-width: 4px;
+      border: 1px solid currentColor;
+      border-radius: 100px;
+      padding-left: 8px;
+      padding-right: 8px;
+
+      &:before {
+        display: none;
+      }
+    }
+  }
+
   h1,
   h2,
   h3,
@@ -351,7 +373,7 @@ const _EditorContainer = styled.div`
 
   h1.title {
     margin-top: 8px;
-    margin-bottom: 32px;
+    margin-bottom: 8px;
   }
 
   .ProseMirror-gapcursor {
