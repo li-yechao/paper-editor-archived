@@ -82,9 +82,15 @@ export interface CollabEmitEvents {
 }
 
 export interface CollabListenEvents {
-  paper: (e: { clientID: ClientID; version: Version; doc: DocJson; ipfsGatewayUri: string }) => void
+  paper: (e: {
+    clientID: ClientID
+    version: Version
+    doc: DocJson
+    ipfsGatewayUri: string
+    writable: boolean
+  }) => void
   transaction: (e: { version: Version; steps: DocJson[]; clientIDs: ClientID[] }) => void
-  persistence: (e: { version: Version; updatedAt: number }) => void
+  persistence: (e: { version: Version; updatedAt: number; writable: boolean }) => void
 }
 
 export interface EditorProps {
@@ -100,6 +106,8 @@ export default class Editor extends React.PureComponent<EditorProps> {
   private editor = createRef<ProsemirrorEditor>()
 
   private manager?: Manager
+
+  private readOnly = true
 
   private collabClient?: Socket<CollabListenEvents, CollabEmitEvents>
 
@@ -141,15 +149,16 @@ export default class Editor extends React.PureComponent<EditorProps> {
 
   private init() {
     const { socketUri, paperId, accessToken } = this.props
-    if (!socketUri || !paperId || !accessToken) {
+    if (!socketUri || !paperId) {
       return
     }
 
     this.collabClient = io(socketUri, {
       query: { paperId },
-      extraHeaders: { authorization: `Bearer ${accessToken}` },
+      extraHeaders: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
     })
-    this.collabClient.on('paper', ({ version, doc, clientID, ipfsGatewayUri }) => {
+    this.collabClient.on('paper', ({ version, doc, clientID, ipfsGatewayUri, writable }) => {
+      this.readOnly = !writable
       this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri })
     })
     this.collabClient.on('transaction', ({ steps, clientIDs }) => {
@@ -164,7 +173,13 @@ export default class Editor extends React.PureComponent<EditorProps> {
         editorView.updateState(state.apply(tr))
       }
     })
-    this.collabClient.on('persistence', e => this.props.onPersistence?.(e))
+    this.collabClient.on('persistence', ({ version, updatedAt, writable }) => {
+      this.props.onPersistence?.({ version, updatedAt })
+      if (this.readOnly !== !writable) {
+        this.readOnly = !writable
+        this.forceUpdate()
+      }
+    })
   }
 
   private initManager(e: {
@@ -303,7 +318,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
   }
 
   render() {
-    const { editor, manager } = this
+    const { editor, manager, readOnly } = this
 
     if (!manager) {
       return (
@@ -319,6 +334,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
           ref={editor}
           autoFocus
           manager={manager}
+          readOnly={readOnly}
           dispatchTransaction={this.dispatchTransaction}
           onInited={this.onEditorInited}
         />

@@ -59,15 +59,18 @@ export default class Editor extends React.PureComponent<EditorProps> {
       return
     }
 
-    const { manager, readOnly, dispatchTransaction } = this.props
+    const { manager, dispatchTransaction } = this.props
 
     this.menus = manager.menus
 
     this.editorView = new EditorView(container, {
       state: manager.createState(),
-      editable: () => !readOnly,
+      editable: () => !this.props.readOnly,
       nodeViews: manager.nodeViews,
       dispatchTransaction: tr => {
+        if (this.props.readOnly && tr.docChanged) {
+          return
+        }
         dispatchTransaction?.(this.editorView!, tr)
         this.forceUpdate()
       },
