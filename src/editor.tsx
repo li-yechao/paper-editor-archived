@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import styled from '@emotion/styled'
-import { Box } from '@material-ui/core'
+import { Box, Typography } from '@material-ui/core'
 import { Image } from '@material-ui/icons'
 import { SpeedDial, SpeedDialAction, SpeedDialIcon } from '@material-ui/lab'
 import { createHotkey } from '@react-hook/hotkey'
@@ -87,10 +87,16 @@ export interface CollabListenEvents {
     version: Version
     doc: DocJson
     ipfsGatewayUri: string
+    readable: boolean
     writable: boolean
   }) => void
   transaction: (e: { version: Version; steps: DocJson[]; clientIDs: ClientID[] }) => void
-  persistence: (e: { version: Version; updatedAt: number; writable: boolean }) => void
+  persistence: (e: {
+    version: Version
+    updatedAt: number
+    readable: boolean
+    writable: boolean
+  }) => void
 }
 
 export interface EditorProps {
@@ -107,7 +113,8 @@ export default class Editor extends React.PureComponent<EditorProps> {
 
   private manager?: Manager
 
-  private readOnly = true
+  private readable = true
+  private writable = false
 
   private collabClient?: Socket<CollabListenEvents, CollabEmitEvents>
 
@@ -157,10 +164,14 @@ export default class Editor extends React.PureComponent<EditorProps> {
       query: { paperId },
       extraHeaders: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
     })
-    this.collabClient.on('paper', ({ version, doc, clientID, ipfsGatewayUri, writable }) => {
-      this.readOnly = !writable
-      this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri })
-    })
+    this.collabClient.on(
+      'paper',
+      ({ version, doc, clientID, ipfsGatewayUri, readable, writable }) => {
+        this.readable = readable
+        this.writable = writable
+        this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri })
+      }
+    )
     this.collabClient.on('transaction', ({ steps, clientIDs }) => {
       const { editorView } = this
       if (editorView) {
@@ -173,10 +184,11 @@ export default class Editor extends React.PureComponent<EditorProps> {
         editorView.updateState(state.apply(tr))
       }
     })
-    this.collabClient.on('persistence', ({ version, updatedAt, writable }) => {
+    this.collabClient.on('persistence', ({ version, updatedAt, readable, writable }) => {
       this.props.onPersistence?.({ version, updatedAt })
-      if (this.readOnly !== !writable) {
-        this.readOnly = !writable
+      if (this.writable !== writable || this.readable !== readable) {
+        this.readable = readable
+        this.writable = writable
         this.forceUpdate()
       }
     })
@@ -318,7 +330,15 @@ export default class Editor extends React.PureComponent<EditorProps> {
   }
 
   render() {
-    const { editor, manager, readOnly } = this
+    const { editor, manager, readable, writable } = this
+
+    if (!readable) {
+      return (
+        <_Loading>
+          <Typography variant="caption">Forbidden</Typography>
+        </_Loading>
+      )
+    }
 
     if (!manager) {
       return (
@@ -334,7 +354,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
           ref={editor}
           autoFocus
           manager={manager}
-          readOnly={readOnly}
+          readOnly={!writable}
           dispatchTransaction={this.dispatchTransaction}
           onInited={this.onEditorInited}
         />
