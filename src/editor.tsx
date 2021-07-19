@@ -82,6 +82,7 @@ export interface CollabEmitEvents {
 }
 
 export interface CollabListenEvents {
+  error: (e: { message: string }) => void
   paper: (e: {
     clientID: ClientID
     version: Version
@@ -108,13 +109,28 @@ export interface EditorProps {
   onTitleChange?: (e: { title: string }) => void
 }
 
-export default class Editor extends React.PureComponent<EditorProps> {
+export default class Editor extends React.PureComponent<
+  EditorProps,
+  {
+    connected: boolean
+    readable: boolean
+    writable: boolean
+    manager?: Manager
+    error?: string
+  }
+> {
+  constructor(props: EditorProps) {
+    super(props)
+    this.state = {
+      connected: false,
+      readable: true,
+      writable: false,
+      manager: undefined,
+      error: undefined,
+    }
+  }
+
   private editor = createRef<ProsemirrorEditor>()
-
-  private manager?: Manager
-
-  private readable = true
-  private writable = false
 
   private collabClient?: Socket<CollabListenEvents, CollabEmitEvents>
 
@@ -164,34 +180,42 @@ export default class Editor extends React.PureComponent<EditorProps> {
       query: { paperId },
       extraHeaders: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
     })
-    this.collabClient.on(
-      'paper',
-      ({ version, doc, clientID, ipfsGatewayUri, readable, writable }) => {
-        this.readable = readable
-        this.writable = writable
-        this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri })
-      }
-    )
-    this.collabClient.on('transaction', ({ steps, clientIDs }) => {
-      const { editorView } = this
-      if (editorView) {
-        const { state } = editorView
-        const tr = receiveTransaction(
-          state,
-          steps.map(i => Step.fromJSON(state.schema, i)),
-          clientIDs
-        )
-        editorView.updateState(state.apply(tr))
-      }
-    })
-    this.collabClient.on('persistence', ({ version, updatedAt, readable, writable }) => {
-      this.props.onPersistence?.({ version, updatedAt })
-      if (this.writable !== writable || this.readable !== readable) {
-        this.readable = readable
-        this.writable = writable
-        this.forceUpdate()
-      }
-    })
+    this.collabClient
+      .on('paper', ({ version, doc, clientID, ipfsGatewayUri, readable, writable }) => {
+        this.setState({
+          manager: this.initManager({ doc, collab: { version, clientID }, ipfsGatewayUri }),
+          readable,
+          writable,
+        })
+      })
+      .on('transaction', ({ steps, clientIDs }) => {
+        const { editorView } = this
+        if (editorView) {
+          const { state } = editorView
+          const tr = receiveTransaction(
+            state,
+            steps.map(i => Step.fromJSON(state.schema, i)),
+            clientIDs
+          )
+          editorView.updateState(state.apply(tr))
+        }
+      })
+      .on('persistence', ({ version, updatedAt, readable, writable }) => {
+        this.props.onPersistence?.({ version, updatedAt })
+        this.setState({ readable, writable })
+      })
+      .on('error', ({ message }) => {
+        this.setState({ error: message })
+      })
+      .on('connect_error', ({ message }) => {
+        this.setState({ error: message })
+      })
+      .on('connect', () => {
+        this.setState({ connected: true })
+      })
+      .on('disconnect', () => {
+        this.setState({ connected: false })
+      })
   }
 
   private initManager(e: {
@@ -282,8 +306,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
       }),
     ]
 
-    this.manager = new Manager(extensions.filter(notEmpty), e.doc)
-    this.forceUpdate()
+    return new Manager(extensions.filter(notEmpty), e.doc)
   }
 
   private dispatchTransaction = (view: EditorView, tr: Transaction) => {
@@ -330,38 +353,40 @@ export default class Editor extends React.PureComponent<EditorProps> {
   }
 
   render() {
-    const { editor, manager, readable, writable } = this
+    const {
+      editor,
+      state: { connected, manager, writable, error },
+    } = this
 
-    if (!readable) {
+    if (connected && manager) {
       return (
-        <_Loading>
-          <Typography variant="caption">Forbidden</Typography>
-        </_Loading>
+        <>
+          <__Editor
+            ref={editor}
+            autoFocus
+            manager={manager}
+            readOnly={!writable}
+            dispatchTransaction={this.dispatchTransaction}
+            onInited={this.onEditorInited}
+          />
+          <Box position="fixed" bottom={16} right={16}>
+            <_SpeedDial editor={editor} manager={manager} />
+          </Box>
+        </>
       )
     }
-
-    if (!manager) {
+    if (error) {
       return (
         <_Loading>
-          <CupertinoActivityIndicator />
+          <Typography variant="caption">{error}</Typography>
         </_Loading>
       )
     }
 
     return (
-      <>
-        <__Editor
-          ref={editor}
-          autoFocus
-          manager={manager}
-          readOnly={!writable}
-          dispatchTransaction={this.dispatchTransaction}
-          onInited={this.onEditorInited}
-        />
-        <Box position="fixed" bottom={16} right={16}>
-          <_SpeedDial editor={editor} manager={manager} />
-        </Box>
-      </>
+      <_Loading>
+        <CupertinoActivityIndicator />
+      </_Loading>
     )
   }
 }
