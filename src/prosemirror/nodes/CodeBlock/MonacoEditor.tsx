@@ -62,7 +62,7 @@ const MonacoEditor = (props: MonacoEditorProps) => {
     matchMedia.addEventListener('change', themeListener)
 
     monacoEditor.current = editor.create(container.current, {
-      value: props.defaultValue,
+      model: createModel(props.defaultValue, props.language),
       language: props.language,
       theme,
       lineHeight: props.lineHeight,
@@ -154,6 +154,12 @@ const MonacoEditor = (props: MonacoEditorProps) => {
   }, [props.language])
 
   return <_Editor ref={container} />
+}
+
+function createModel(value?: string, language?: string) {
+  const model = editor.createModel(value || '', language)
+  model.updateOptions({ tabSize: 2 })
+  return model
 }
 
 const _Editor = styled.div`
