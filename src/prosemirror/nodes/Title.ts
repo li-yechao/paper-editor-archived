@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Keymap } from 'prosemirror-commands'
+import { setTextSelection } from 'prosemirror-utils'
 import Node, { StrictNodeSpec } from './Node'
 
 export interface TitleAttrs {}
@@ -29,6 +31,20 @@ export default class Title extends Node<TitleAttrs> {
       defining: true,
       parseDOM: [{ tag: 'h1.title' }],
       toDOM: () => ['h1', { class: 'title' }, 0],
+    }
+  }
+
+  keymap(): Keymap {
+    return {
+      Enter: (state, dispatch) => {
+        const { $from } = state.selection
+        if (dispatch && $from.node().type.name === this.name) {
+          const next = $from.node($from.depth - 1).maybeChild($from.indexAfter($from.depth - 1))
+          dispatch(setTextSelection($from.end() + (next?.nodeSize ?? 0) - 1, 1)(state.tr))
+          return true
+        }
+        return false
+      },
     }
   }
 }

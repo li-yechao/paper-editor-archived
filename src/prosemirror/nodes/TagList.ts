@@ -14,6 +14,7 @@
 
 import { Keymap } from 'prosemirror-commands'
 import { NodeSpec, NodeType } from 'prosemirror-model'
+import { setTextSelection } from 'prosemirror-utils'
 import Node, { StrictNodeSpec } from './Node'
 
 export interface TagsAttrs {}
@@ -33,6 +34,7 @@ export default class TagList extends Node<TagsAttrs> {
       content: `${this.contentName}+`,
       marks: '',
       selectable: false,
+      isolating: true,
       parseDOM: [{ tag: 'ul[data-type="tag_list"]' }],
       toDOM: () => ['ul', { 'data-type': 'tag_list' }, 0],
     }
@@ -58,6 +60,20 @@ export default class TagList extends Node<TagsAttrs> {
             dispatch(state.tr.split($from.pos).scrollIntoView())
             return true
           }
+        }
+        return false
+      },
+      Enter: (state, dispatch) => {
+        const { $from } = state.selection
+        if (dispatch && $from.node().type.name === this.contentName) {
+          const next = $from.node($from.depth - 1).maybeChild($from.indexAfter($from.depth - 1))
+          dispatch(
+            setTextSelection(
+              next ? $from.after() + next.nodeSize : $from.after($from.depth - 1) + 1,
+              -1
+            )(state.tr)
+          )
+          return true
         }
         return false
       },
