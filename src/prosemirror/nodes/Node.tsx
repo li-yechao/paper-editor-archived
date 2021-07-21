@@ -30,7 +30,10 @@ import Extension, { ExtensionType } from '../lib/Extension'
 
 export { Node as ProsemirrorNode } from 'prosemirror-model'
 
-export type StrictProsemirrorNode<T extends { [key: string]: any } = {}> = ProsemirrorNode & {
+export type StrictProsemirrorNode<T extends { [key: string]: any } = {}> = Omit<
+  ProsemirrorNode,
+  'attrs'
+> & {
   attrs: T
 }
 

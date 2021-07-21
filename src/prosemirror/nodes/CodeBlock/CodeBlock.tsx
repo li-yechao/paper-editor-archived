@@ -72,12 +72,12 @@ export default class CodeBlock extends Node<CodeBlockAttrs> {
   }
 
   private isCodeBlock(doc: StrictProsemirrorNode, from: number, to: number) {
-    let res: { node: StrictProsemirrorNode; pos: number } | undefined
+    let res: { node: StrictProsemirrorNode<CodeBlockAttrs>; pos: number } | undefined
     try {
       doc.nodesBetween(from, to, (node, pos) => {
         if (node.type.name === this.name) {
           if (from > pos && to < pos + node.nodeSize) {
-            res = { node, pos }
+            res = { node: node as any, pos }
           }
           return false
         }
@@ -88,20 +88,25 @@ export default class CodeBlock extends Node<CodeBlockAttrs> {
   }
 
   private _monacoEditorInstances = new Map<string, MonacoInstance>()
-  private _checkEditorIdAttr(node: StrictProsemirrorNode): string {
+  private _checkEditorIdAttr(node: StrictProsemirrorNode<CodeBlockAttrs>): string {
     const { editorId } = node.attrs
     if (!editorId) {
       throw new Error(`Invalid editorId ${editorId}`)
     }
     return editorId
   }
-  getMonacoEditorInstanceByNode(node: StrictProsemirrorNode): MonacoInstance | undefined {
+  getMonacoEditorInstanceByNode(
+    node: StrictProsemirrorNode<CodeBlockAttrs>
+  ): MonacoInstance | undefined {
     return this._monacoEditorInstances.get(this._checkEditorIdAttr(node))
   }
-  setMonacoEditorInstanceByNode(node: StrictProsemirrorNode, instance: MonacoInstance) {
+  setMonacoEditorInstanceByNode(
+    node: StrictProsemirrorNode<CodeBlockAttrs>,
+    instance: MonacoInstance
+  ) {
     return this._monacoEditorInstances.set(this._checkEditorIdAttr(node), instance)
   }
-  deleteMonacoEditorInstanceByNode(node: StrictProsemirrorNode) {
+  deleteMonacoEditorInstanceByNode(node: StrictProsemirrorNode<CodeBlockAttrs>) {
     return this._monacoEditorInstances.delete(this._checkEditorIdAttr(node))
   }
 
