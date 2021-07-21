@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { css } from '@emotion/css'
 import { Keymap } from 'prosemirror-commands'
 import { setTextSelection } from 'prosemirror-utils'
-import Node, { StrictNodeSpec } from './Node'
+import Node, { NodeView, NodeViewCreator, StrictNodeSpec } from './Node'
 
 export interface TitleAttrs {}
 
@@ -47,4 +48,34 @@ export default class Title extends Node<TitleAttrs> {
       },
     }
   }
+
+  get nodeView(): NodeViewCreator<TitleAttrs> {
+    return () => {
+      return new TitleNodeView()
+    }
+  }
+}
+
+class TitleNodeView extends NodeView<TitleAttrs> {
+  constructor() {
+    super()
+    this.dom = document.createElement('h1')
+
+    this.dom.classList.add(css`
+      position: relative;
+      list-style: none;
+    `)
+    const zero = document.createElement('span')
+    zero.innerText = '\u200b'
+    zero.classList.add(css`
+      position: absolute;
+      left: 0;
+      top: 0;
+    `)
+
+    this.dom.append(zero, this.contentDOM)
+  }
+
+  dom: HTMLElement
+  contentDOM = document.createElement('div')
 }
