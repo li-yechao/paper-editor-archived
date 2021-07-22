@@ -18,6 +18,7 @@ import { EditorState } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback } from 'react'
 import { useRef } from 'react'
+import { useState } from 'react'
 import { useEffect } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './createMenuComponent'
@@ -30,8 +31,17 @@ export interface FloatingToolbarProps {
 
 const FloatingToolbar = React.memo(({ editorView, menus }: FloatingToolbarProps) => {
   const props = useTooltipProps(editorView)
+  const [open, setOpen] = useState(false)
 
-  return <_FloatingToolbar menus={menus} editorView={editorView} {...props} />
+  // Avoid show toolbar when IME input in safari.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOpen(props.open)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [props.open])
+
+  return <_FloatingToolbar menus={menus} editorView={editorView} {...props} open={open} />
 })
 
 const _FloatingToolbar = React.memo(
