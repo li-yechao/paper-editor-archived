@@ -111,9 +111,12 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
   private MonacoEditor = React.lazy(() => import('./MonacoEditor'))
 
   component = React.memo(
-    (_props: { node: StrictProsemirrorNode<CodeBlockAttrs> }) => {
+    ({ node }: { node: StrictProsemirrorNode<CodeBlockAttrs> }) => {
       const { MonacoEditor } = this
       const [visible, setVisible] = useState(false)
+      const [contentHeight, setContentHeight] = useState(() => {
+        return node.textContent.split('\n').length * EDITOR_LINE_HEIGHT
+      })
 
       const onVisibleChange = useCallback((visible: boolean) => {
         visible && setVisible(true)
@@ -148,9 +151,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
             ))}
           </_LanguageSelect>
 
-          <_Content
-            style={{ minHeight: EDITOR_LINE_HEIGHT * this.node.textContent.split('\n').length + 6 }}
-          >
+          <_Content style={{ minHeight: contentHeight + 6 }}>
             {!visible ? (
               fallback
             ) : (
@@ -162,9 +163,10 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
                   readOnly={!this.view.editable}
                   focused={this.selected}
                   clientID={this.clientId}
-                  onInited={e =>
+                  onInited={e => {
+                    e.editor.onDidContentSizeChange(e => setContentHeight(e.contentHeight))
                     this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)
-                  }
+                  }}
                   onDestroyed={() =>
                     this.monacoInstanceManager.deleteMonacoEditorInstanceByNode(this.node)
                   }
