@@ -248,7 +248,19 @@ const _LanguageSelect = styled(Select)`
 
   .MuiOutlinedInput-notchedOutline {
     color: inherit;
-    border-color: currentColor !important;
+    border-color: currentColor;
+  }
+
+  &.Mui-focused,
+  &.Mui-disabled,
+  &:hover {
+    .MuiOutlinedInput-notchedOutline {
+      border-color: currentColor;
+    }
+  }
+
+  &.Mui-disabled {
+    color: inherit;
     opacity: 0.5;
   }
 `
