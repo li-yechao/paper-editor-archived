@@ -21,7 +21,13 @@ export default function toggleMark(type: MarkType) {
 
   return (state: EditorState, dispatch?: (tr: Transaction) => void) => {
     const { empty, $from } = state.selection
-    if (dispatch && empty && type.isInSet($from.marks())) {
+    if (
+      dispatch &&
+      empty &&
+      type.isInSet($from.marks()) &&
+      // Should remove stored mark if cursor at end of mark
+      $from.textOffset > 0
+    ) {
       let index = $from.index()
       let start = $from.posAtIndex(index)
       let length = $from.parent.maybeChild(index)?.text?.length
