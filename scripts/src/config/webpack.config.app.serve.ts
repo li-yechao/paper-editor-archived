@@ -28,7 +28,7 @@ if (!entry) {
   throw new Error('Missing required env __WEBPACK_ENTRY__')
 }
 
-const configuration: Configuration = {
+const configuration: Configuration & { devServer?: { [key: string]: any } } = {
   mode: 'development',
   devtool: 'cheap-module-source-map',
   context: cwd,
@@ -80,6 +80,12 @@ const configuration: Configuration = {
       filename: 'js/[name].worker.js',
     }),
   ],
+  devServer: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+  },
 }
 
 module.exports = configuration
