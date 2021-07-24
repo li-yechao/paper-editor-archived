@@ -460,11 +460,9 @@ const _Loading = styled.div`
 `
 
 const __Editor = styled(ProsemirrorEditor)`
-  .ProseMirror {
-    min-height: 100vh;
-    padding: 8px;
-    padding-bottom: 100px;
-    max-width: 800px;
-    margin: auto;
-  }
+  min-height: 100vh;
+  padding: 8px;
+  padding-bottom: 100px;
+  max-width: 800px;
+  margin: auto;
 `
