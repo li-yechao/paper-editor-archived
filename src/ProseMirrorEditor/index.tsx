@@ -105,13 +105,7 @@ const ProseMirrorEditor = React.memo(
           ref={container}
           data-editable={!props.readOnly}
         />
-        {view.current && (
-          <FloatingToolbar
-            editorView={view.current}
-            state={view.current.state}
-            menus={menus.current}
-          />
-        )}
+        {view.current && <FloatingToolbar editorView={view.current} menus={menus.current} />}
       </>
     )
   })
