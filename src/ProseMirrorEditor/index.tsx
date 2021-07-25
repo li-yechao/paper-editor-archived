@@ -15,7 +15,11 @@
 import { cx } from '@emotion/css'
 import { TextSelection, Transaction } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
-import React, { createRef } from 'react'
+import React, { forwardRef, useCallback } from 'react'
+import { useEffect } from 'react'
+import { useImperativeHandle } from 'react'
+import { useRef } from 'react'
+import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './lib/createMenuComponent'
 import FloatingToolbar from './lib/FloatingToolbar'
 import Manager from './lib/Manager'
@@ -30,79 +34,87 @@ export interface ProseMirrorEditorProps {
   onInited?: (editorView: EditorView) => void
 }
 
-export default class ProseMirrorEditor extends React.PureComponent<ProseMirrorEditorProps> {
-  container = createRef<HTMLDivElement>()
+export interface ProseMirrorEditorElement {
+  focus(): void
+  readonly view: EditorView | undefined
+}
 
-  editorView?: EditorView
+const ProseMirrorEditor = React.memo(
+  forwardRef<ProseMirrorEditorElement, ProseMirrorEditorProps>((props, ref) => {
+    const _mounted = useMountedState()
+    const _update = useUpdate()
+    const update = useCallback(() => _mounted() && _update(), [])
 
-  private menus: MenuComponentType[] = []
+    const container = useRef<HTMLDivElement>(null)
+    const view = useRef<EditorView>()
+    const menus = useRef<MenuComponentType[]>([])
 
-  componentDidMount() {
-    this.initEditor()
-    this.props.autoFocus && this.focus()
-  }
-
-  componentDidUpdate(prevProps: ProseMirrorEditorProps) {
-    if (this.props.manager !== prevProps.manager) {
-      this.initEditor()
-    }
-  }
-
-  focus() {
-    this.editorView?.focus()
-  }
-
-  private initEditor() {
-    this.editorView?.destroy()
-
-    const container = this.container.current
-    if (!container) {
-      return
-    }
-
-    const { manager, dispatchTransaction } = this.props
-
-    this.menus = manager.menus
-
-    this.editorView = new EditorView(
-      { mount: container },
-      {
-        state: manager.createState(),
-        editable: () => !this.props.readOnly,
-        nodeViews: manager.nodeViews,
-        dispatchTransaction: tr => {
-          if (this.props.readOnly && tr.docChanged) {
-            return
-          }
-          dispatchTransaction?.(this.editorView!, tr)
-          this.forceUpdate()
+    useImperativeHandle(
+      ref,
+      () => ({
+        focus: () => view.current?.focus(),
+        get view() {
+          return view.current
         },
-      }
+      }),
+      []
     )
 
-    const { tr, doc } = this.editorView.state
-    this.editorView.dispatch(tr.setSelection(TextSelection.atEnd(doc)))
+    useEffect(() => {
+      view.current?.destroy()
 
-    this.props.onInited?.(this.editorView)
-    this.forceUpdate()
-  }
+      if (!container.current) {
+        return
+      }
 
-  render() {
+      const { manager, dispatchTransaction } = props
+
+      menus.current = manager.menus
+
+      view.current = new EditorView(
+        { mount: container.current },
+        {
+          state: manager.createState(),
+          editable: () => !props.readOnly,
+          nodeViews: manager.nodeViews,
+          dispatchTransaction: tr => {
+            if (props.readOnly && tr.docChanged) {
+              return
+            }
+            dispatchTransaction?.(view.current!, tr)
+            update()
+          },
+        }
+      )
+
+      props.onInited?.(view.current)
+    }, [props.manager])
+
+    useEffect(() => {
+      if (props.autoFocus && view.current) {
+        const { tr, doc } = view.current.state
+        view.current.dispatch(tr.setSelection(TextSelection.atEnd(doc)))
+        view.current.focus()
+      }
+    }, [])
+
     return (
       <>
         <div
-          className={cx(this.props.className, proseMirrorStyle)}
-          ref={this.container}
-          data-editable={!this.props.readOnly}
+          className={cx(props.className, proseMirrorStyle)}
+          ref={container}
+          data-editable={!props.readOnly}
         />
-        {this.editorView && (
+        {view.current && (
           <FloatingToolbar
-            editorView={this.editorView}
-            state={this.editorView.state}
-            menus={this.menus}
+            editorView={view.current}
+            state={view.current.state}
+            menus={menus.current}
           />
         )}
       </>
     )
-  }
-}
+  })
+)
+
+export default ProseMirrorEditor

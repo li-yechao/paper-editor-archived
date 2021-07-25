@@ -32,7 +32,7 @@ import React, { createRef } from 'react'
 import { useToggle } from 'react-use'
 import { io, Socket } from 'socket.io-client'
 import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
-import ProseMirrorEditor from './ProseMirrorEditor'
+import ProseMirrorEditor, { ProseMirrorEditorElement } from './ProseMirrorEditor'
 import Manager from './ProseMirrorEditor/lib/Manager'
 import Bold from './ProseMirrorEditor/marks/Bold'
 import Code from './ProseMirrorEditor/marks/Code'
@@ -130,7 +130,7 @@ export default class Editor extends React.PureComponent<
     }
   }
 
-  private editor = createRef<ProseMirrorEditor>()
+  private editor = createRef<ProseMirrorEditorElement>()
 
   private collabClient?: Socket<CollabListenEvents, CollabEmitEvents>
 
@@ -140,10 +140,6 @@ export default class Editor extends React.PureComponent<
       this._title = title
       this.props.onTitleChange?.({ title })
     }
-  }
-
-  private get editorView() {
-    return this.editor.current?.editorView
   }
 
   componentDidMount() {
@@ -189,15 +185,15 @@ export default class Editor extends React.PureComponent<
         })
       })
       .on('transaction', ({ steps, clientIDs }) => {
-        const { editorView } = this
-        if (editorView) {
-          const { state } = editorView
+        const view = this.editor.current?.view
+        if (view) {
+          const { state } = view
           const tr = receiveTransaction(
             state,
             steps.map(i => Step.fromJSON(state.schema, i)),
             clientIDs
           )
-          editorView.updateState(state.apply(tr))
+          view.updateState(state.apply(tr))
         }
       })
       .on('persistence', ({ version, updatedAt, readable, writable }) => {
@@ -395,7 +391,7 @@ const _SpeedDial = ({
   editor,
   manager,
 }: {
-  editor: React.RefObject<ProseMirrorEditor>
+  editor: React.RefObject<ProseMirrorEditorElement>
   manager: Manager
 }) => {
   const [open, toggleOpen] = useToggle(false)
@@ -410,19 +406,17 @@ const _SpeedDial = ({
     input.style.top = '0px'
     input.onchange = () => {
       try {
-        const editorView = editor.current?.editorView
+        const view = editor.current?.view
         const fileToNode = (manager.extensions.find(
           i => i instanceof DropPasteFile
         ) as DropPasteFile | null)?.options.fileToNode
 
-        if (editorView && fileToNode && input.files?.length) {
+        if (view && fileToNode && input.files?.length) {
           const nodes = Array.from(input.files)
-            .map(i => fileToNode(editorView, i))
+            .map(i => fileToNode(view, i))
             .filter(notEmpty)
           Promise.all(nodes).then(nodes => {
-            editorView.dispatch(
-              editorView.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0))
-            )
+            view.dispatch(view.state.tr.replaceSelection(new Slice(Fragment.from(nodes), 0, 0)))
           })
         }
       } finally {
