@@ -21,7 +21,7 @@ import FloatingToolbar from './lib/FloatingToolbar'
 import Manager from './lib/Manager'
 import { proseMirrorStyle } from './style'
 
-export interface EditorProps {
+export interface ProseMirrorEditorProps {
   className?: string
   readOnly?: boolean
   autoFocus?: boolean
@@ -30,7 +30,7 @@ export interface EditorProps {
   onInited?: (editorView: EditorView) => void
 }
 
-export default class Editor extends React.PureComponent<EditorProps> {
+export default class ProseMirrorEditor extends React.PureComponent<ProseMirrorEditorProps> {
   container = createRef<HTMLDivElement>()
 
   editorView?: EditorView
@@ -42,7 +42,7 @@ export default class Editor extends React.PureComponent<EditorProps> {
     this.props.autoFocus && this.focus()
   }
 
-  componentDidUpdate(prevProps: EditorProps) {
+  componentDidUpdate(prevProps: ProseMirrorEditorProps) {
     if (this.props.manager !== prevProps.manager) {
       this.initEditor()
     }

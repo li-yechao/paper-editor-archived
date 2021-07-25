@@ -32,33 +32,33 @@ import React, { createRef } from 'react'
 import { useToggle } from 'react-use'
 import { io, Socket } from 'socket.io-client'
 import CupertinoActivityIndicator from './components/CupertinoActivityIndicator'
-import ProsemirrorEditor from './prosemirror'
-import Manager from './prosemirror/lib/Manager'
-import Bold from './prosemirror/marks/Bold'
-import Code from './prosemirror/marks/Code'
-import Highlight from './prosemirror/marks/Highlight'
-import Italic from './prosemirror/marks/Italic'
-import Link from './prosemirror/marks/Link'
-import Strikethrough from './prosemirror/marks/Strikethrough'
-import Underline from './prosemirror/marks/Underline'
-import Blockquote from './prosemirror/nodes/Blockquote'
-import BulletList from './prosemirror/nodes/BulletList'
-import CodeBlock from './prosemirror/nodes/CodeBlock'
-import Doc from './prosemirror/nodes/Doc'
-import Heading from './prosemirror/nodes/Heading'
-import ImageBlock, { ImageBlockOptions } from './prosemirror/nodes/ImageBlock'
-import ListItem from './prosemirror/nodes/ListItem'
-import OrderedList from './prosemirror/nodes/OrderedList'
-import Paragraph from './prosemirror/nodes/Paragraph'
-import TagList from './prosemirror/nodes/TagList'
-import Text from './prosemirror/nodes/Text'
-import Title from './prosemirror/nodes/Title'
-import TodoItem from './prosemirror/nodes/TodoItem'
-import TodoList from './prosemirror/nodes/TodoList'
-import VideoBlock, { VideoBlockOptions } from './prosemirror/nodes/VideoBlock'
-import DropPasteFile from './prosemirror/plugins/DropPasteFile'
-import Placeholder from './prosemirror/plugins/Placeholder'
-import Plugins from './prosemirror/plugins/Plugins'
+import ProseMirrorEditor from './ProseMirrorEditor'
+import Manager from './ProseMirrorEditor/lib/Manager'
+import Bold from './ProseMirrorEditor/marks/Bold'
+import Code from './ProseMirrorEditor/marks/Code'
+import Highlight from './ProseMirrorEditor/marks/Highlight'
+import Italic from './ProseMirrorEditor/marks/Italic'
+import Link from './ProseMirrorEditor/marks/Link'
+import Strikethrough from './ProseMirrorEditor/marks/Strikethrough'
+import Underline from './ProseMirrorEditor/marks/Underline'
+import Blockquote from './ProseMirrorEditor/nodes/Blockquote'
+import BulletList from './ProseMirrorEditor/nodes/BulletList'
+import CodeBlock from './ProseMirrorEditor/nodes/CodeBlock'
+import Doc from './ProseMirrorEditor/nodes/Doc'
+import Heading from './ProseMirrorEditor/nodes/Heading'
+import ImageBlock, { ImageBlockOptions } from './ProseMirrorEditor/nodes/ImageBlock'
+import ListItem from './ProseMirrorEditor/nodes/ListItem'
+import OrderedList from './ProseMirrorEditor/nodes/OrderedList'
+import Paragraph from './ProseMirrorEditor/nodes/Paragraph'
+import TagList from './ProseMirrorEditor/nodes/TagList'
+import Text from './ProseMirrorEditor/nodes/Text'
+import Title from './ProseMirrorEditor/nodes/Title'
+import TodoItem from './ProseMirrorEditor/nodes/TodoItem'
+import TodoList from './ProseMirrorEditor/nodes/TodoList'
+import VideoBlock, { VideoBlockOptions } from './ProseMirrorEditor/nodes/VideoBlock'
+import DropPasteFile from './ProseMirrorEditor/plugins/DropPasteFile'
+import Placeholder from './ProseMirrorEditor/plugins/Placeholder'
+import Plugins from './ProseMirrorEditor/plugins/Plugins'
 import { notEmpty } from './utils/array'
 
 export type Version = number
@@ -130,7 +130,7 @@ export default class Editor extends React.PureComponent<
     }
   }
 
-  private editor = createRef<ProsemirrorEditor>()
+  private editor = createRef<ProseMirrorEditor>()
 
   private collabClient?: Socket<CollabListenEvents, CollabEmitEvents>
 
@@ -361,7 +361,7 @@ export default class Editor extends React.PureComponent<
     if (connected && manager) {
       return (
         <>
-          <__Editor
+          <_ProseMirrorEditor
             ref={editor}
             autoFocus
             manager={manager}
@@ -395,7 +395,7 @@ const _SpeedDial = ({
   editor,
   manager,
 }: {
-  editor: React.RefObject<ProsemirrorEditor>
+  editor: React.RefObject<ProseMirrorEditor>
   manager: Manager
 }) => {
   const [open, toggleOpen] = useToggle(false)
@@ -459,7 +459,7 @@ const _Loading = styled.div`
   justify-content: center;
 `
 
-const __Editor = styled(ProsemirrorEditor)`
+const _ProseMirrorEditor = styled(ProseMirrorEditor)`
   min-height: 100vh;
   padding: 8px;
   padding-bottom: 100px;
