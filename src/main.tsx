@@ -21,7 +21,7 @@ import { useCallback } from 'react'
 import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import { hot } from 'react-hot-loader/root'
-import Editor, { Version } from './index'
+import Editor, { EditorElement, Version } from './index'
 import Messager from './Messager'
 
 type Config = {
@@ -45,7 +45,7 @@ interface MessagerReservedEvents {
 const App = hot(() => {
   const theme = createMuiTheme()
 
-  const editorRef = useRef<Editor>(null)
+  const editorRef = useRef<EditorElement>(null)
   const messager = useRef(new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>())
   const [config, setConfig] = useState<Config>(
     (() => {
@@ -80,15 +80,17 @@ const App = hot(() => {
     <StylesProvider injectFirst>
       <MuiThemeProvider theme={theme}>
         <EmotionThemeProvider theme={theme}>
-          <Editor
-            ref={editorRef}
-            socketUri={config.socketUri}
-            paperId={config.paperId}
-            accessToken={config.accessToken}
-            onPersistence={onPersistence}
-            onChange={onChange}
-            onTitleChange={onTitleChange}
-          />
+          {config.socketUri && config.paperId ? (
+            <Editor
+              ref={editorRef}
+              socketUri={config.socketUri}
+              paperId={config.paperId}
+              accessToken={config.accessToken}
+              onPersistence={onPersistence}
+              onChange={onChange}
+              onTitleChange={onTitleChange}
+            />
+          ) : null}
         </EmotionThemeProvider>
       </MuiThemeProvider>
     </StylesProvider>

@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Editor from './Editor'
-
 export type { EditorProps, EditorElement } from './Editor'
 
-export type { Version, DocJson, ClientID } from './Editor/io'
-
-export default Editor
+export { default } from './Editor'

@@ -21,17 +21,20 @@ import { useImperativeHandle } from 'react'
 import { useRef } from 'react'
 import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './lib/createMenuComponent'
+import Extension from './lib/Extension'
 import FloatingToolbar from './lib/FloatingToolbar'
 import Manager from './lib/Manager'
 import { proseMirrorStyle } from './style'
+
+export type DocJson = { [key: string]: any }
 
 export interface ProseMirrorEditorProps {
   className?: string
   readOnly?: boolean
   autoFocus?: boolean
-  manager: Manager
+  extensions: Extension[]
+  defaultValue?: DocJson
   dispatchTransaction?: ((view: EditorView, tr: Transaction) => void) | null
-  onInited?: (editorView: EditorView) => void
 }
 
 export interface ProseMirrorEditorElement {
@@ -67,7 +70,9 @@ const ProseMirrorEditor = React.memo(
         return
       }
 
-      const { manager, dispatchTransaction } = props
+      const { extensions, defaultValue: doc, dispatchTransaction } = props
+
+      const manager = new Manager(extensions, doc)
 
       menus.current = manager.menus
 
@@ -86,9 +91,7 @@ const ProseMirrorEditor = React.memo(
           },
         }
       )
-
-      props.onInited?.(view.current)
-    }, [props.manager])
+    }, [props.extensions, props.defaultValue])
 
     useEffect(() => {
       if (props.autoFocus && view.current) {
