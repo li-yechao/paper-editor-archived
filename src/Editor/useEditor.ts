@@ -41,7 +41,6 @@ import CodeBlock from '../ProseMirrorEditor/nodes/CodeBlock'
 import Doc from '../ProseMirrorEditor/nodes/Doc'
 import Heading from '../ProseMirrorEditor/nodes/Heading'
 import ImageBlock, { ImageBlockOptions } from '../ProseMirrorEditor/nodes/ImageBlock'
-import ListItem from '../ProseMirrorEditor/nodes/ListItem'
 import OrderedList from '../ProseMirrorEditor/nodes/OrderedList'
 import Paragraph from '../ProseMirrorEditor/nodes/Paragraph'
 import TagList from '../ProseMirrorEditor/nodes/TagList'
@@ -215,7 +214,6 @@ function createExtensions(options: {
     new TodoItem({ todoItemReadOnly: false }),
     new OrderedList(),
     new BulletList(),
-    new ListItem(),
     new CodeBlock({ clientID: options.clientID }),
 
     new Bold(),

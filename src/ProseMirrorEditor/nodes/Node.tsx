@@ -66,6 +66,8 @@ export default abstract class Node<T> extends Extension {
     return {}
   }
 
+  readonly childNodes?: Node<any>[]
+
   inputRules<S extends Schema<any, any>>(_options: { type: NodeType<S> }): InputRule<S>[] {
     return []
   }

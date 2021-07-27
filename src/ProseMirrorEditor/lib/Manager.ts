@@ -32,11 +32,19 @@ export default class Manager {
   readonly schema: Schema
 
   get nodes(): Node<any>[] {
-    return <Node<any>[]>this.extensions.filter(i => i.type === 'node')
+    const nodes = <Node<any>[]>this.extensions.filter(i => i.type === 'node')
+    return nodes.concat(nodes.flatMap(i => i.childNodes ?? []))
   }
 
   get nodeSpecs(): { [key: string]: NodeSpec } {
-    return this.nodes.reduce((res, i) => ({ ...res, [i.name]: i.schema, ...i.schema_extra }), {})
+    return this.nodes.reduce(
+      (res, i) => ({
+        ...res,
+        [i.name]: i.schema,
+        ...i.schema_extra,
+      }),
+      {}
+    )
   }
 
   get marks(): Mark[] {
@@ -48,7 +56,9 @@ export default class Manager {
   }
 
   get plugins(): Plugin[] {
-    return this.extensions.reduce((res, i) => res.concat(i.plugins), [] as Plugin[])
+    return this.extensions
+      .reduce((res, i) => res.concat(i.plugins), [] as Plugin[])
+      .concat(this.nodes.flatMap(i => i.childNodes?.flatMap(j => j.plugins) ?? []))
   }
 
   get inputRules(): InputRule[] {
