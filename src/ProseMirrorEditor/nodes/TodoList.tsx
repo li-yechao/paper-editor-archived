@@ -16,17 +16,42 @@ import { css } from '@emotion/css'
 import styled from '@emotion/styled'
 import { Checkbox } from '@material-ui/core'
 import { Keymap } from 'prosemirror-commands'
+import { InputRule, wrappingInputRule } from 'prosemirror-inputrules'
 import { NodeType } from 'prosemirror-model'
 import { splitListItem } from 'prosemirror-schema-list'
 import { EditorView } from 'prosemirror-view'
 import React from 'react'
-import Node, { NodeViewReact, NodeViewCreator, StrictNodeSpec, StrictProsemirrorNode } from './Node'
+import Node, { NodeViewCreator, NodeViewReact, StrictNodeSpec, StrictProsemirrorNode } from './Node'
 
-export interface TodoItemAttrs {
+export interface TodoListAttrs {}
+
+export default class TodoList extends Node<TodoListAttrs> {
+  get name(): string {
+    return 'todo_list'
+  }
+
+  get schema(): StrictNodeSpec<TodoListAttrs> {
+    return {
+      attrs: {},
+      content: 'todo_item+',
+      group: 'block',
+      parseDOM: [{ tag: 'ul[data-type="todo_list"]' }],
+      toDOM: () => ['ul', { 'data-type': 'todo_list' }, 0],
+    }
+  }
+
+  inputRules({ type }: { type: NodeType }): InputRule[] {
+    return [wrappingInputRule(/^(\[\s?\])\s$/i, type)]
+  }
+
+  childNodes = [new TodoItem({ todoItemReadOnly: false })]
+}
+
+interface TodoItemAttrs {
   checked: boolean | null
 }
 
-export default class TodoItem extends Node<TodoItemAttrs> {
+class TodoItem extends Node<TodoItemAttrs> {
   constructor(private options: { readonly todoItemReadOnly?: boolean } = {}) {
     super()
   }

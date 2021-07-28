@@ -46,7 +46,6 @@ import Paragraph from '../ProseMirrorEditor/nodes/Paragraph'
 import TagList from '../ProseMirrorEditor/nodes/TagList'
 import Text from '../ProseMirrorEditor/nodes/Text'
 import Title from '../ProseMirrorEditor/nodes/Title'
-import TodoItem from '../ProseMirrorEditor/nodes/TodoItem'
 import TodoList from '../ProseMirrorEditor/nodes/TodoList'
 import VideoBlock, { VideoBlockOptions } from '../ProseMirrorEditor/nodes/VideoBlock'
 import DropPasteFile from '../ProseMirrorEditor/plugins/DropPasteFile'
@@ -211,7 +210,6 @@ function createExtensions(options: {
     new Heading(),
     new Blockquote(),
     new TodoList(),
-    new TodoItem({ todoItemReadOnly: false }),
     new OrderedList(),
     new BulletList(),
     new CodeBlock({ clientID: options.clientID }),
