@@ -48,7 +48,7 @@ export interface StrictParseRule<T> extends ParseRule {
 }
 
 export interface StrictNodeSpec<T> extends Omit<NodeSpec, 'toDOM'> {
-  attrs: { [key in keyof T]: { default: T[key] } }
+  attrs: { [key in keyof T]: { default: T[key] } } & { _phantom?: any }
 
   toDOM?: ((node: StrictProsemirrorNode<T>) => DOMOutputSpec) | null
 
