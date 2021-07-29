@@ -47,7 +47,7 @@ export interface StrictParseRule<T> extends ParseRule {
   getAttrs?: ((p: globalThis.Node | string) => T | false | null | undefined) | null
 }
 
-export interface StrictNodeSpec<T> extends Omit<NodeSpec, 'toDOM'> {
+export interface StrictNodeSpec<T> extends Omit<RemoveIndex<NodeSpec>, 'toDOM'> {
   attrs: { [key in keyof T]: { default: T[key] } } & { _phantom?: any }
 
   toDOM?: ((node: StrictProsemirrorNode<T>) => DOMOutputSpec) | null
