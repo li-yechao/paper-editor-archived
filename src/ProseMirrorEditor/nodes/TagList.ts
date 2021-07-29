@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { css } from '@emotion/css'
 import { Keymap } from 'prosemirror-commands'
-import { NodeSpec, NodeType } from 'prosemirror-model'
+import { NodeType } from 'prosemirror-model'
+import { splitListItem } from 'prosemirror-schema-list'
 import { setTextSelection } from 'prosemirror-utils'
-import Node, { StrictNodeSpec } from './Node'
+import Node, { NodeView, NodeViewCreator, StrictNodeSpec } from './Node'
 
 export interface TagsAttrs {}
 
@@ -37,17 +39,6 @@ export default class TagList extends Node<TagsAttrs> {
       isolating: true,
       parseDOM: [{ tag: 'ul[data-type="tag_list"]' }],
       toDOM: () => ['ul', { 'data-type': 'tag_list' }, 0],
-    }
-  }
-
-  get schema_extra(): { [name: string]: NodeSpec } {
-    return {
-      [this.contentName]: {
-        content: 'text*',
-        marks: '',
-        parseDOM: [{ tag: 'li' }],
-        toDOM: () => ['li', 0],
-      },
     }
   }
 
@@ -77,6 +68,58 @@ export default class TagList extends Node<TagsAttrs> {
         }
         return false
       },
+    }
+  }
+
+  childNodes = [new TagItem()]
+}
+
+interface TagItemAttrs {}
+
+class TagItem extends Node<TagItemAttrs> {
+  get name(): string {
+    return 'tag_item'
+  }
+
+  get schema(): StrictNodeSpec<TagItemAttrs> {
+    return {
+      attrs: {},
+      content: 'text*',
+      marks: '',
+      parseDOM: [{ tag: 'li' }],
+      toDOM: () => ['li', 0],
+    }
+  }
+
+  keymap({ type }: { type: NodeType }): Keymap {
+    return {
+      Enter: splitListItem(type),
+    }
+  }
+
+  get nodeView(): NodeViewCreator<TagItemAttrs> {
+    return () => {
+      return new (class extends NodeView<TagItemAttrs> {
+        constructor() {
+          super()
+
+          this.dom.classList.add(css`
+            position: relative;
+          `)
+          const zero = document.createElement('span')
+          zero.innerText = '\u200b'
+          zero.classList.add(css`
+            position: absolute;
+            left: 0;
+            top: 0;
+          `)
+
+          this.dom.append(zero, this.contentDOM)
+        }
+
+        dom = document.createElement('li')
+        contentDOM = document.createElement('div')
+      })()
     }
   }
 }

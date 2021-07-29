@@ -13,11 +13,13 @@
 // limitations under the License.
 
 import { Keymap } from 'prosemirror-commands'
-import { NodeSpec, NodeType, Schema } from 'prosemirror-model'
+import { NodeType, Schema } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType, setTextSelection } from 'prosemirror-utils'
 import Node, { NodeViewCreator, StrictNodeSpec, ProsemirrorNode } from '../Node'
 import VideoBlockNodeView from './VideoBlockNodeView'
+
+const VIDEO_BLOCK_CAPTION_NAME = 'video_block_caption'
 
 export interface VideoBlockOptions {
   upload: (file: File | File[]) => Promise<string>
@@ -42,7 +44,7 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
   async create(schema: Schema, file: File): Promise<ProsemirrorNode> {
     const node = schema.nodes[this.name]!.create(
       {},
-      schema.nodes[this.contentName]!.create(undefined, schema.text(file.name))
+      schema.nodes[VIDEO_BLOCK_CAPTION_NAME]!.create(undefined, schema.text(file.name))
     )
     ;(node as any).file = file
     return node as any
@@ -50,10 +52,6 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
 
   get name(): string {
     return 'video_block'
-  }
-
-  get contentName(): string {
-    return `${this.name}_caption`
   }
 
   get schema(): StrictNodeSpec<VideoBlockAttrs> {
@@ -64,7 +62,7 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
         thumbnail: { default: null },
         dashArchiveSrc: { default: null },
       },
-      content: this.contentName,
+      content: VIDEO_BLOCK_CAPTION_NAME,
       marks: '',
       group: 'block',
       draggable: true,
@@ -103,17 +101,6 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
     }
   }
 
-  get schema_extra(): { [name: string]: NodeSpec } {
-    return {
-      [this.contentName]: {
-        content: 'text*',
-        marks: '',
-        parseDOM: [{ tag: 'div' }],
-        toDOM: () => ['div', 0],
-      },
-    }
-  }
-
   keymap({ type }: { type: NodeType }): Keymap {
     return {
       // NOTE: Move cursor to next node when input Enter.
@@ -122,7 +109,7 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
           const { $from, $to } = state.selection
           const fromNode = $from.node($from.depth)
           const toNode = $to.node($to.depth)
-          if (fromNode.type.name === this.contentName && fromNode === toNode) {
+          if (fromNode.type.name === VIDEO_BLOCK_CAPTION_NAME && fromNode === toNode) {
             const endPos = $from.end($from.depth - 1)
             const { tr } = state
             dispatch(
@@ -142,7 +129,7 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
         if (
           dispatch &&
           empty &&
-          fromNode.type.name === this.contentName &&
+          fromNode.type.name === VIDEO_BLOCK_CAPTION_NAME &&
           $from.parentOffset === 0
         ) {
           dispatch(
@@ -165,6 +152,26 @@ export default class VideoBlock extends Node<VideoBlockAttrs> {
       }
 
       return new VideoBlockNodeView(node, view, getPos, this.options)
+    }
+  }
+
+  childNodes = [new VideoBlockCaption()]
+}
+
+interface VideoBlockCaptionAttrs {}
+
+class VideoBlockCaption extends Node<VideoBlockCaptionAttrs> {
+  get name(): string {
+    return VIDEO_BLOCK_CAPTION_NAME
+  }
+
+  get schema(): StrictNodeSpec<VideoBlockCaptionAttrs> {
+    return {
+      attrs: {},
+      content: 'text*',
+      marks: '',
+      parseDOM: [{ tag: 'div' }],
+      toDOM: () => ['div', 0],
     }
   }
 }

@@ -14,12 +14,14 @@
 
 import { Keymap } from 'prosemirror-commands'
 import { Schema } from 'prosemirror-model'
-import { NodeSpec, NodeType } from 'prosemirror-model'
+import { NodeType } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import { removeParentNodeOfType, setTextSelection } from 'prosemirror-utils'
 import { readAsDataURL, getImageThumbnail } from '../../lib/image'
 import Node, { NodeViewCreator, StrictNodeSpec, ProsemirrorNode } from '../Node'
 import ImageBlockNodeView from './ImageBlockNodeView'
+
+const IMAGE_BLOCK_CAPTION_NAME = 'image_block_caption'
 
 export interface ImageBlockOptions {
   upload: (file: File) => Promise<string>
@@ -57,7 +59,7 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
             naturalWidth,
             naturalHeight,
           },
-          schema.nodes[this.contentName]!.create(undefined, schema.text(file.name))
+          schema.nodes[IMAGE_BLOCK_CAPTION_NAME]!.create(undefined, schema.text(file.name))
         )
         ;(node as any).file = file
         return node
@@ -68,10 +70,6 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
     return 'image_block'
   }
 
-  get contentName(): string {
-    return `${this.name}_caption`
-  }
-
   get schema(): StrictNodeSpec<ImageBlockAttrs> {
     return {
       attrs: {
@@ -80,7 +78,7 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
         naturalHeight: { default: null },
         thumbnail: { default: null },
       },
-      content: this.contentName,
+      content: IMAGE_BLOCK_CAPTION_NAME,
       marks: '',
       group: 'block',
       draggable: true,
@@ -119,17 +117,6 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
     }
   }
 
-  get schema_extra(): { [name: string]: NodeSpec } {
-    return {
-      [this.contentName]: {
-        content: 'text*',
-        marks: '',
-        parseDOM: [{ tag: 'div' }],
-        toDOM: () => ['div', 0],
-      },
-    }
-  }
-
   keymap({ type }: { type: NodeType }): Keymap {
     return {
       // NOTE: Move cursor to next node when input Enter.
@@ -138,7 +125,7 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
           const { $from, $to } = state.selection
           const fromNode = $from.node($from.depth)
           const toNode = $to.node($to.depth)
-          if (fromNode.type.name === this.contentName && fromNode === toNode) {
+          if (fromNode.type.name === IMAGE_BLOCK_CAPTION_NAME && fromNode === toNode) {
             const endPos = $from.end($from.depth - 1)
             const { tr } = state
             dispatch(
@@ -158,7 +145,7 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
         if (
           dispatch &&
           empty &&
-          fromNode.type.name === this.contentName &&
+          fromNode.type.name === IMAGE_BLOCK_CAPTION_NAME &&
           $from.parentOffset === 0
         ) {
           dispatch(
@@ -181,6 +168,26 @@ export default class ImageBlock extends Node<ImageBlockAttrs> {
       }
 
       return new ImageBlockNodeView(node, view, getPos, this.options)
+    }
+  }
+
+  childNodes = [new ImageBlockCaption()]
+}
+
+interface ImageBlockCaptionAttrs {}
+
+class ImageBlockCaption extends Node<ImageBlockCaptionAttrs> {
+  get name(): string {
+    return IMAGE_BLOCK_CAPTION_NAME
+  }
+
+  get schema(): StrictNodeSpec<ImageBlockCaptionAttrs> {
+    return {
+      attrs: {},
+      content: 'text*',
+      marks: '',
+      parseDOM: [{ tag: 'div' }],
+      toDOM: () => ['div', 0],
     }
   }
 }

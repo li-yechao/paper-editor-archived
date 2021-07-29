@@ -62,10 +62,6 @@ export default abstract class Node<T> extends Extension {
 
   abstract get schema(): StrictNodeSpec<T>
 
-  get schema_extra(): { [name: string]: NodeSpec } {
-    return {}
-  }
-
   readonly childNodes?: Node<any>[]
 
   inputRules<S extends Schema<any, any>>(_options: { type: NodeType<S> }): InputRule<S>[] {

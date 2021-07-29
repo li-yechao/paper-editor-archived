@@ -41,7 +41,6 @@ export default class Manager {
       (res, i) => ({
         ...res,
         [i.name]: i.schema,
-        ...i.schema_extra,
       }),
       {}
     )
