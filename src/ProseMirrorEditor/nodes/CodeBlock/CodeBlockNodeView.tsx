@@ -21,7 +21,7 @@ import CupertinoActivityIndicator from '../../../components/CupertinoActivityInd
 import { LazyComponent } from '../../lib/LazyComponent'
 import { NodeViewReactSelectable, StrictProsemirrorNode } from '../Node'
 import { CodeBlockAttrs } from './CodeBlock'
-import { LANGUAGES } from './languages'
+import { getLanguage, LANGUAGES } from './languages'
 
 type MonacoInstance = import('./MonacoEditor').MonacoInstance
 
@@ -102,8 +102,8 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
     )
   }
 
-  private get language(): string | null {
-    return this.node.attrs.language || 'plaintext'
+  private get language(): string | undefined {
+    return getLanguage(this.node.attrs.language || 'plaintext')
   }
 
   private isAtFirstPosition = false
@@ -159,7 +159,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
                 <MonacoEditor
                   lineHeight={EDITOR_LINE_HEIGHT}
                   defaultValue={this.node.textContent}
-                  language={this.language || undefined}
+                  language={this.language}
                   readOnly={!this.view.editable}
                   focused={this.selected}
                   clientID={this.clientId}

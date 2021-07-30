@@ -86,3 +86,21 @@ export const LANGUAGES = [
   'xml',
   'yaml',
 ]
+
+export const LANGUAGE_ALIAS = {
+  javascript: ['js'],
+  typescript: ['ts'],
+  rust: ['rs'],
+  shell: ['sh'],
+}
+
+const _LANGUAGE_ALIAS: { [key: string]: string | undefined } = Object.entries(
+  LANGUAGE_ALIAS
+).reduce((map, [lang, alias]) => alias.reduce((map, a) => ({ ...map, [a]: lang }), map), {})
+
+export function getLanguage(lang: string): string | undefined {
+  if (LANGUAGES.includes(lang)) {
+    return lang
+  }
+  return _LANGUAGE_ALIAS[lang]
+}
