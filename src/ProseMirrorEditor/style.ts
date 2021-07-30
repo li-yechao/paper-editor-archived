@@ -118,7 +118,6 @@ export const proseMirrorStyle = css`
 
     li {
       margin: 4px 8px;
-      min-width: 4px;
       border: 1px solid currentColor;
       border-radius: 100px;
       padding-left: 8px;

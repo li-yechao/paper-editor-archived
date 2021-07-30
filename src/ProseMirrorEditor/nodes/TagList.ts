@@ -114,6 +114,10 @@ class TagItem extends Node<TagItemAttrs> {
             top: 0;
           `)
 
+          this.contentDOM.classList.add(css`
+            min-width: 1px;
+          `)
+
           this.dom.append(zero, this.contentDOM)
         }
 
