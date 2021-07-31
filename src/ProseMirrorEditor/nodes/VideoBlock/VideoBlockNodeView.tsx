@@ -223,7 +223,7 @@ export default class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
           />
         </_VideoContainer>
 
-        <_PlayButton onClick={togglePlaying}>
+        <_PlayButton tabIndex={-1} onClick={togglePlaying}>
           {state.current.playing ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
         </_PlayButton>
 
