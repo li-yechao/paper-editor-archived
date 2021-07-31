@@ -109,15 +109,7 @@ export default class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
     }, [])
 
     const onVisibleChange = useCallback((visible: boolean) => {
-      if (!visible) {
-        setState({ visible })
-        return
-      }
-      const src = (this.attrs.src && this.options.getSrc(this.attrs.src)) ?? undefined
-      setState({
-        src,
-        visible,
-      })
+      setState({ visible })
     }, [])
 
     useEffect(() => {
@@ -139,6 +131,13 @@ export default class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
         }
       })()
     }, [file])
+
+    useEffect(() => {
+      if (state.current.visible) {
+        const src = (this.attrs.src && this.options.getSrc(this.attrs.src)) ?? undefined
+        setState({ src })
+      }
+    }, [state.current.visible, this.attrs.src])
 
     return (
       <LazyComponent

@@ -152,18 +152,17 @@ export default class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
     }, [])
 
     useEffect(() => {
-      if (!state.current.visible) {
-        return
+      if (state.current.visible) {
+        ;(async () => {
+          const { dashArchiveSrc } = this.attrs
+          const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
+          setState({
+            src: `${s}/dash/index.mpd`,
+            poster: `${s}/poster.jpeg`,
+          })
+        })()
       }
-      ;(async () => {
-        const { dashArchiveSrc } = this.attrs
-        const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
-        setState({
-          src: `${s}/dash/index.mpd`,
-          poster: `${s}/poster.jpeg`,
-        })
-      })()
-    }, [this.attrs.dashArchiveSrc])
+    }, [this.attrs.dashArchiveSrc, state.current.visible])
 
     useEffect(() => {
       if (!file) {
