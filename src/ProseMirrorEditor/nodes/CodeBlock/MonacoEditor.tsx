@@ -30,6 +30,7 @@ export interface MonacoEditorProps {
   focused?: boolean
   clientID?: string | number
   lineHeight?: number
+  tabIndex?: number
   onInited?: (e: MonacoInstance) => void
   onDestroyed?: () => void
   onInsert?: (index: number, text: string) => void
@@ -78,6 +79,7 @@ const MonacoEditor = (props: MonacoEditorProps) => {
       renderWhitespace: 'all',
       readOnly: props.readOnly,
       scrollBeyondLastLine: false,
+      tabIndex: props.tabIndex,
     })
 
     contentManager.current = new EditorContentManager({

@@ -140,6 +140,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
             native
             variant="outlined"
             value={this.language}
+            inputProps={{ tabIndex: -1 }}
             disabled={!this.view.editable}
             onChange={handleLanguageChange}
             onMouseUp={handleLanguageMouseUp}
@@ -163,6 +164,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
                   readOnly={!this.view.editable}
                   focused={this.selected}
                   clientID={this.clientId}
+                  tabIndex={-1}
                   onInited={e => {
                     e.editor.onDidContentSizeChange(e => setContentHeight(e.contentHeight))
                     this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)
