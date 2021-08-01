@@ -28,6 +28,7 @@ type MonacoInstance = import('./MonacoEditor').MonacoInstance
 export const MonacoEditorTransactionMetaKey = 'MonacoEditorClientID'
 
 const EDITOR_LINE_HEIGHT = 18
+const SCROLLBAR_SIZE = 6
 
 export interface MonacoEditorInstanceManager {
   setMonacoEditorInstanceByNode(
@@ -115,7 +116,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
       const { MonacoEditor } = this
       const [visible, setVisible] = useState(false)
       const [contentHeight, setContentHeight] = useState(() => {
-        return node.textContent.split('\n').length * EDITOR_LINE_HEIGHT
+        return node.textContent.split('\n').length * EDITOR_LINE_HEIGHT + SCROLLBAR_SIZE
       })
 
       const onVisibleChange = useCallback((visible: boolean) => {
@@ -152,7 +153,7 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
             ))}
           </_LanguageSelect>
 
-          <_Content style={{ minHeight: contentHeight + 6 }}>
+          <_Content style={{ minHeight: contentHeight }}>
             {!visible ? (
               fallback
             ) : (
@@ -166,7 +167,13 @@ export default class CodeBlockNodeView extends NodeViewReactSelectable<CodeBlock
                   clientID={this.clientId}
                   tabIndex={-1}
                   onInited={e => {
-                    e.editor.onDidContentSizeChange(e => setContentHeight(e.contentHeight))
+                    e.editor.onDidContentSizeChange(e => {
+                      setContentHeight(
+                        e.contentHeight % EDITOR_LINE_HEIGHT === 0
+                          ? e.contentHeight + SCROLLBAR_SIZE
+                          : e.contentHeight
+                      )
+                    })
                     this.monacoInstanceManager.setMonacoEditorInstanceByNode(this.node, e)
                   }}
                   onDestroyed={() =>
