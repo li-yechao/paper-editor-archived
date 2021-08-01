@@ -225,6 +225,7 @@ function createExtensions(options: {
     new Plugins([
       keymap({
         'Mod-z': undo,
+        'Shift-Mod-z': redo,
         'Mod-y': redo,
         Backspace: undoInputRule,
       }),
