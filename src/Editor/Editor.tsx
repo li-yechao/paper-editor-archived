@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import styled from '@emotion/styled'
-import { Box } from '@material-ui/core'
 import React, { useRef } from 'react'
 import CupertinoActivityIndicator from '../components/CupertinoActivityIndicator'
 import { Version } from './io'
@@ -25,7 +24,6 @@ import { EditorView } from 'prosemirror-view'
 import { forwardRef } from 'react'
 import { useImperativeHandle } from 'react'
 import { useSaveShortcut } from './useSaveShortcut'
-import SpeedDial from './SpeedDial'
 
 export interface EditorProps {
   socketUri: string
@@ -77,19 +75,14 @@ const Editor = React.memo(
     }
 
     return (
-      <>
-        <_ProseMirrorEditor
-          ref={editor}
-          autoFocus
-          defaultValue={defaultValue}
-          readOnly={!writable}
-          extensions={extensions}
-          dispatchTransaction={dispatchTransaction}
-        />
-        <Box position="fixed" bottom={16} right={16}>
-          <SpeedDial editor={editor} extensions={extensions} />
-        </Box>
-      </>
+      <_ProseMirrorEditor
+        ref={editor}
+        autoFocus
+        defaultValue={defaultValue}
+        readOnly={!writable}
+        extensions={extensions}
+        dispatchTransaction={dispatchTransaction}
+      />
     )
   })
 )
