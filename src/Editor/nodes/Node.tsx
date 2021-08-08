@@ -26,7 +26,7 @@ import {
 import { Decoration, EditorView, NodeView as ProsemirrorNodeView } from 'prosemirror-view'
 import React from 'react'
 import ReactDOM from 'react-dom'
-import Extension, { ExtensionType } from '../lib/Extension'
+import Extension from '../lib/Extension'
 
 export { Node as ProsemirrorNode } from 'prosemirror-model'
 
@@ -55,14 +55,10 @@ export interface StrictNodeSpec<T> extends Omit<RemoveIndex<NodeSpec>, 'toDOM'> 
   parseDOM?: StrictParseRule<T>[] | null
 }
 
-export default abstract class Node<T> extends Extension {
-  get type(): ExtensionType {
-    return 'node'
-  }
-
+export default abstract class Node<T = {}> extends Extension {
   abstract get schema(): StrictNodeSpec<T>
 
-  readonly childNodes?: Node<any>[]
+  readonly childNodes?: ChildNode<any>[]
 
   inputRules<S extends Schema<any, any>>(_options: { type: NodeType<S> }): InputRule<S>[] {
     return []
@@ -76,6 +72,8 @@ export default abstract class Node<T> extends Extension {
     return undefined
   }
 }
+
+export type ChildNode<T = {}> = Omit<Node<T>, 'childNodes'>
 
 export abstract class NodeView<T> {
   abstract dom: HTMLElement

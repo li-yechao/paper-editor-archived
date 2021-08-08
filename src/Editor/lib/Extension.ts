@@ -12,10 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Editor from './Editor'
+import { EditorState, Plugin, Transaction } from 'prosemirror-state'
+import { EditorView } from 'prosemirror-view'
 
-export type { EditorProps, EditorElement } from './Editor'
+export default abstract class Extension {
+  abstract get name(): string
 
-export type { Version, DocJson, ClientID } from './Editor/io'
+  view?: EditorView
 
-export default Editor
+  readonly dispatchTransaction?: (
+    view: EditorView,
+    tr: Transaction,
+    state: EditorState
+  ) => EditorState
+
+  readonly defaultValue?: () => PromiseOr<{ [key: string]: any } | undefined>
+
+  readonly editable?: () => boolean
+
+  get plugins(): PromiseOr<Plugin[]> {
+    return []
+  }
+}

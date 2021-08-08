@@ -133,14 +133,16 @@ export default class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
         setState({ visible, playing: false })
         return
       }
-      const { dashArchiveSrc } = this.attrs
-      const s = dashArchiveSrc && this.options.getSrc(dashArchiveSrc)
-      setState({
-        src: s ? `${s}/dash/index.mpd` : undefined,
-        poster: s ? `${s}/poster.jpeg` : undefined,
-        playing: true,
-        visible,
-      })
+      ;(async () => {
+        const { dashArchiveSrc } = this.attrs
+        const s = dashArchiveSrc && (await this.options.getSrc(dashArchiveSrc))
+        setState({
+          src: s ? `${s}/dash/index.mpd` : undefined,
+          poster: s ? `${s}/poster.jpeg` : undefined,
+          playing: true,
+          visible,
+        })
+      })()
     }, [])
 
     const onPlay = useCallback(() => {

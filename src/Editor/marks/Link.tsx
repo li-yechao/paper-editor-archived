@@ -90,16 +90,16 @@ export default class Link extends Mark {
           isActive: isMarkActive(type),
           toggleMark: toggleMark(type),
         }),
-        expand: ({ editorView }) => {
-          const { selection } = editorView.state
+        expand: ({ view }) => {
+          const { selection } = view.state
           const range = getMarkRange(selection.$from, type)
           const [href, setHref] = useState(range?.mark.attrs.href || '')
 
           const submit = () => {
-            editorView.dispatch(
+            view.dispatch(
               href.trim()
-                ? editorView.state.tr.addMark(selection.from, selection.to, type.create({ href }))
-                : editorView.state.tr.removeMark(selection.from, selection.to, type)
+                ? view.state.tr.addMark(selection.from, selection.to, type.create({ href }))
+                : view.state.tr.removeMark(selection.from, selection.to, type)
             )
           }
 
@@ -124,7 +124,7 @@ export default class Link extends Mark {
             </_LinkExpand>
           )
         },
-        isExpandVisible: editorView => isMarkActive(type)(editorView.state),
+        isExpandVisible: view => isMarkActive(type)(view.state),
       },
     ]
   }

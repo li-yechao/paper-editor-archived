@@ -23,12 +23,12 @@ import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './createMenuComponent'
 
 export interface FloatingToolbarProps {
-  editorView: EditorView
+  view: EditorView
   menus: MenuComponentType[]
 }
 
-const FloatingToolbar = ({ editorView, menus }: FloatingToolbarProps) => {
-  const props = useTooltipProps(editorView)
+const FloatingToolbar = ({ view, menus }: FloatingToolbarProps) => {
+  const props = useTooltipProps(view)
   const [open, setOpen] = useState(false)
 
   // Avoid show toolbar when IME input in safari.
@@ -39,19 +39,19 @@ const FloatingToolbar = ({ editorView, menus }: FloatingToolbarProps) => {
     return () => clearTimeout(timer)
   }, [props.open])
 
-  return <_FloatingToolbar menus={menus} editorView={editorView} {...props} open={open} />
+  return <_FloatingToolbar menus={menus} view={view} {...props} open={open} />
 }
 
 const _FloatingToolbar = React.memo(
   ({
-    editorView,
+    view,
     menus,
     isSelecting,
     offsetX,
     offsetY,
     ...popperProps
   }: {
-    editorView: EditorView
+    view: EditorView
     menus: MenuComponentType[]
     isSelecting?: boolean
     offsetX: number
@@ -66,7 +66,7 @@ const _FloatingToolbar = React.memo(
         disableTouchListener
         children={<div />}
         PopperProps={{
-          anchorEl: editorView.dom,
+          anchorEl: view.dom,
           modifiers: {
             flip: { enabled: false },
             offset: { offset: `${offsetX},${offsetY}` },
@@ -80,15 +80,15 @@ const _FloatingToolbar = React.memo(
           <>
             <ButtonGroup variant="text" color="inherit">
               {menus.map((menu, index) => (
-                <menu.button key={index} editorView={editorView} />
+                <menu.button key={index} view={view} />
               ))}
             </ButtonGroup>
             {menus.map((menu, index) => {
               return (
                 menu.expand &&
-                menu.isExpandVisible?.(editorView) && (
+                menu.isExpandVisible?.(view) && (
                   <Box key={index} borderTop={1} borderColor="rgba(0, 0, 0, 0.23)">
-                    <menu.expand editorView={editorView} />
+                    <menu.expand view={view} />
                   </Box>
                 )
               )
@@ -100,7 +100,7 @@ const _FloatingToolbar = React.memo(
   }
 )
 
-function useTooltipProps(editorView: EditorView) {
+function useTooltipProps(view: EditorView) {
   const _mounted = useMountedState()
   const _update = useUpdate()
   const update = useCallback(() => _mounted() && _update(), [])
@@ -121,10 +121,10 @@ function useTooltipProps(editorView: EditorView) {
       update()
     }
 
-    editorView.dom.addEventListener('mousedown', onMouseDown, true)
+    view.dom.addEventListener('mousedown', onMouseDown, true)
     window.addEventListener('mouseup', onMouseUp, true)
     return () => {
-      editorView.dom.removeEventListener('mousedown', onMouseDown)
+      view.dom.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
@@ -132,12 +132,12 @@ function useTooltipProps(editorView: EditorView) {
   state.current.open = false
 
   if (!state.current.isSelecting) {
-    const { selection } = editorView.state
+    const { selection } = view.state
     if ((!selection.empty || selection.$from.marks().length) && !(selection as any).node) {
-      const dom = editorView.dom
+      const dom = view.dom
       const { width, left, top } = dom.getBoundingClientRect()
-      const { left: fromLeft, top: fromTop } = editorView.coordsAtPos(selection.from)
-      const { left: toLeft } = editorView.coordsAtPos(selection.to, -1)
+      const { left: fromLeft, top: fromTop } = view.coordsAtPos(selection.from)
+      const { left: toLeft } = view.coordsAtPos(selection.to, -1)
 
       state.current.open = true
       state.current.offsetX = fromLeft + (toLeft - fromLeft) / 2 - left - width / 2

@@ -17,6 +17,14 @@ import Node, { StrictNodeSpec } from './Node'
 export interface DocAttrs {}
 
 export default class Doc extends Node<DocAttrs> {
+  /**
+   * Create Doc node.
+   * @param content : The content expression for this node, like: title tag_list block+;
+   */
+  constructor(public readonly content: string) {
+    super()
+  }
+
   get name(): string {
     return 'doc'
   }
@@ -24,7 +32,7 @@ export default class Doc extends Node<DocAttrs> {
   get schema(): StrictNodeSpec<DocAttrs> {
     return {
       attrs: {},
-      content: 'title tag_list block+',
+      content: this.content,
     }
   }
 }

@@ -22,8 +22,8 @@ import VideoBlockNodeView from './VideoBlockNodeView'
 const VIDEO_BLOCK_CAPTION_NAME = 'video_block_caption'
 
 export interface VideoBlockOptions {
-  upload: (file: File | File[]) => Promise<string>
-  getSrc: (src: string) => string
+  upload: (file: File | File[]) => PromiseOr<string>
+  getSrc: (src: string) => PromiseOr<string>
   thumbnail: {
     maxSize: number
   }

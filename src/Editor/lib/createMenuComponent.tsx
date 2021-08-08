@@ -20,10 +20,10 @@ import React from 'react'
 export type MenuComponentType = {
   button: React.ComponentType<{
     className?: string
-    editorView: EditorView
+    view: EditorView
   }>
-  expand?: React.ComponentType<{ editorView: EditorView }>
-  isExpandVisible?: (editorView: EditorView) => boolean
+  expand?: React.ComponentType<{ view: EditorView }>
+  isExpandVisible?: (view: EditorView) => boolean
 }
 
 export default function createMenuComponent({
@@ -36,8 +36,8 @@ export default function createMenuComponent({
   toggleMark?: (state: EditorState, dispatch?: (tr: Transaction) => void) => boolean
 }): MenuComponentType {
   return {
-    button: ({ className, editorView }) => {
-      const active = isActive?.(editorView.state)
+    button: ({ className, view }) => {
+      const active = isActive?.(view.state)
       return (
         <Button
           className={className}
@@ -46,9 +46,9 @@ export default function createMenuComponent({
           onClick={() => {
             if (toggleMark) {
               const top = window.scrollY
-              toggleMark(editorView.state, editorView.dispatch)
+              toggleMark(view.state, view.dispatch)
               window.scrollTo({ top })
-              editorView.focus()
+              view.focus()
             }
           }}
         >

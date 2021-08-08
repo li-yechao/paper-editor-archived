@@ -134,8 +134,10 @@ export default class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
 
     useEffect(() => {
       if (state.current.visible) {
-        const src = (this.attrs.src && this.options.getSrc(this.attrs.src)) ?? undefined
-        setState({ src })
+        ;(async () => {
+          const src = (this.attrs.src && (await this.options.getSrc(this.attrs.src))) ?? undefined
+          setState({ src })
+        })()
       }
     }, [state.current.visible, this.attrs.src])
 

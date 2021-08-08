@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Plugin } from 'prosemirror-state'
+import { useEffect } from 'react'
 
-export type ExtensionType = 'extension' | 'node' | 'mark'
+export function useOnSave(onSave: () => void) {
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 's') {
+        e.preventDefault()
+        onSave()
+      }
+    }
 
-export default abstract class Extension {
-  get type(): ExtensionType {
-    return 'extension'
-  }
+    window.addEventListener('keydown', listener)
 
-  get plugins(): Plugin[] {
-    return []
-  }
-
-  abstract get name(): string
+    return () => window.removeEventListener('keydown', listener)
+  }, [onSave])
 }

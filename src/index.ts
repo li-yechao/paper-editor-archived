@@ -12,19 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useEffect } from 'react'
+import Editor from './Editor'
 
-export function useSaveShortcut(onSave: () => void) {
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 's') {
-        e.preventDefault()
-        onSave()
-      }
-    }
+export type { EditorProps, EditorElement } from './Editor'
 
-    window.addEventListener('keydown', listener)
-
-    return () => window.removeEventListener('keydown', listener)
-  }, [onSave])
-}
+export default Editor

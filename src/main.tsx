@@ -12,17 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ThemeProvider as EmotionThemeProvider } from '@emotion/react'
-import { createMuiTheme, MuiThemeProvider, StylesProvider } from '@material-ui/core'
-import React from 'react'
-import { useEffect } from 'react'
-import { useState } from 'react'
-import { useCallback } from 'react'
-import { useRef } from 'react'
+import styled from '@emotion/styled'
+import { StylesProvider } from '@material-ui/core'
+import { getVersion } from 'prosemirror-collab'
+import { baseKeymap } from 'prosemirror-commands'
+import { dropCursor } from 'prosemirror-dropcursor'
+import { gapCursor } from 'prosemirror-gapcursor'
+import { history, redo, undo } from 'prosemirror-history'
+import { undoInputRule } from 'prosemirror-inputrules'
+import { keymap } from 'prosemirror-keymap'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { hot } from 'react-hot-loader/root'
-import Editor, { EditorElement, Version } from './index'
+import { useUpdate } from 'react-use'
+import Extension from './Editor/lib/Extension'
+import Bold from './Editor/marks/Bold'
+import Code from './Editor/marks/Code'
+import Highlight from './Editor/marks/Highlight'
+import Italic from './Editor/marks/Italic'
+import Link from './Editor/marks/Link'
+import Strikethrough from './Editor/marks/Strikethrough'
+import Underline from './Editor/marks/Underline'
+import Blockquote from './Editor/nodes/Blockquote'
+import BulletList from './Editor/nodes/BulletList'
+import CodeBlock from './Editor/nodes/CodeBlock'
+import Doc from './Editor/nodes/Doc'
+import Heading from './Editor/nodes/Heading'
+import ImageBlock, { ImageBlockOptions } from './Editor/nodes/ImageBlock'
+import OrderedList from './Editor/nodes/OrderedList'
+import Paragraph from './Editor/nodes/Paragraph'
+import TagList from './Editor/nodes/TagList'
+import Text from './Editor/nodes/Text'
+import Title from './Editor/nodes/Title'
+import TodoList from './Editor/nodes/TodoList'
+import VideoBlock, { VideoBlockOptions } from './Editor/nodes/VideoBlock'
+import Collab, { Version } from './Editor/plugins/Collab'
+import DropPasteFile from './Editor/plugins/DropPasteFile'
+import Placeholder from './Editor/plugins/Placeholder'
+import Plugins from './Editor/plugins/Plugins'
+import Editor from './index'
 import Messager from './Messager'
+import { useOnSave } from './utils/useOnSave'
 
 type Config = {
   socketUri?: string
@@ -42,10 +72,17 @@ interface MessagerReservedEvents {
   save: () => void
 }
 
-const App = hot(() => {
-  const theme = createMuiTheme()
+const _Editor = styled(Editor)`
+  min-height: 100vh;
+  padding: 8px;
+  padding-bottom: 100px;
+  max-width: 800px;
+  margin: auto;
+`
 
-  const editorRef = useRef<EditorElement>(null)
+const App = hot(() => {
+  const update = useUpdate()
+
   const messager = useRef(new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>())
   const [config, setConfig] = useState<Config>(
     (() => {
@@ -58,41 +95,136 @@ const App = hot(() => {
     })()
   )
 
+  const collab = useRef<Collab>()
+  const extensions = useRef<Extension[]>()
+
+  const save = useCallback(() => collab.current?.save(), [])
+
   useEffect(() => {
     messager.current.on('init', config => setConfig(config ?? {}))
-    messager.current.on('save', () => editorRef.current?.save())
+    messager.current.on('save', save)
     messager.current.emit('ready')
   }, [])
 
-  const onPersistence = useCallback((e: { version: Version; updatedAt: number }) => {
-    messager.current.emit('persistence', e)
-  }, [])
+  const _title = useRef<string>()
 
-  const onChange = useCallback((e: { version: Version }) => {
-    messager.current.emit('change', e)
-  }, [])
+  useEffect(() => {
+    if (!config.socketUri || !config.paperId) {
+      return
+    }
 
-  const onTitleChange = useCallback((e: { title: string }) => {
-    messager.current.emit('titleChange', e)
-  }, [])
+    const _collab = (collab.current = new Collab({
+      socketUri: config.socketUri,
+      paperId: config.paperId,
+      accessToken: config.accessToken,
+      onPersistence: e => messager.current.emit('persistence', e),
+      onDispatchTransaction: (view, tr) => {
+        if (tr.docChanged) {
+          messager.current.emit('change', { version: getVersion(view.state) })
+
+          const firstChild = view.state.doc.firstChild
+          if (firstChild?.type.name === 'title') {
+            const title = firstChild.textContent
+            if (_title.current !== title) {
+              _title.current = title
+            }
+            messager.current.emit('titleChange', { title })
+          }
+        }
+      },
+    }))
+
+    const uploadOptions: ImageBlockOptions & VideoBlockOptions = {
+      upload: async (file: File | File[]) => {
+        const source = Array.isArray(file)
+          ? await Promise.all(
+              file.map(async i => ({
+                path: i.name,
+                content: await i.arrayBuffer(),
+              }))
+            )
+          : {
+              path: file.name,
+              content: await file.arrayBuffer(),
+            }
+        return new Promise<string>(resolve => {
+          _collab.socket.emit('createFile', { source }, res => {
+            resolve(res.hash[res.hash.length - 1]!)
+          })
+        })
+      },
+      getSrc: hash => _collab.paper.then(p => `${p.ipfsGatewayUri}/${hash}`),
+      thumbnail: {
+        maxSize: 1024,
+      },
+    }
+
+    const imageBlock = new ImageBlock(uploadOptions)
+    const videoBlock = new VideoBlock(uploadOptions)
+
+    extensions.current = [
+      _collab,
+      new Placeholder(),
+      new Doc('title tag_list block+'),
+      new Text(),
+      new Title(),
+      new Paragraph(),
+      new Heading(),
+      new TagList(),
+      new Blockquote(),
+      new TodoList(),
+      new OrderedList(),
+      new BulletList(),
+      new CodeBlock({ clientID: '' }),
+
+      new Bold(),
+      new Italic(),
+      new Underline(),
+      new Strikethrough(),
+      new Highlight(),
+      new Code(),
+      new Link(),
+
+      new Plugins([
+        keymap({
+          'Mod-z': undo,
+          'Shift-Mod-z': redo,
+          'Mod-y': redo,
+          Backspace: undoInputRule,
+        }),
+        keymap(baseKeymap),
+        history(),
+        gapCursor(),
+        dropCursor({ color: 'currentColor' }),
+      ]),
+
+      imageBlock,
+      videoBlock,
+
+      new DropPasteFile({
+        fileToNode: (view, file) => {
+          if (imageBlock && file.type.startsWith('image/')) {
+            return imageBlock.create(view.state.schema, file)
+          } else if (videoBlock && file.type.startsWith('video/')) {
+            return videoBlock.create(view.state.schema, file)
+          }
+          return
+        },
+      }),
+    ]
+
+    update()
+  }, [config])
+
+  useOnSave(save)
+
+  if (!extensions.current) {
+    return null
+  }
 
   return (
     <StylesProvider injectFirst>
-      <MuiThemeProvider theme={theme}>
-        <EmotionThemeProvider theme={theme}>
-          {config.socketUri && config.paperId ? (
-            <Editor
-              ref={editorRef}
-              socketUri={config.socketUri}
-              paperId={config.paperId}
-              accessToken={config.accessToken}
-              onPersistence={onPersistence}
-              onChange={onChange}
-              onTitleChange={onTitleChange}
-            />
-          ) : null}
-        </EmotionThemeProvider>
-      </MuiThemeProvider>
+      <_Editor autoFocus extensions={extensions.current} />
     </StylesProvider>
   )
 })

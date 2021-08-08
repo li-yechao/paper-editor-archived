@@ -24,8 +24,8 @@ import ImageBlockNodeView from './ImageBlockNodeView'
 const IMAGE_BLOCK_CAPTION_NAME = 'image_block_caption'
 
 export interface ImageBlockOptions {
-  upload: (file: File) => Promise<string>
-  getSrc: (src: string) => string
+  upload: (file: File) => PromiseOr<string>
+  getSrc: (src: string) => PromiseOr<string>
   thumbnail: {
     maxSize: number
   }
