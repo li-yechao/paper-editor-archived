@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { throttle } from 'lodash'
 import { collab, getVersion, receiveTransaction, sendableSteps } from 'prosemirror-collab'
 import { EditorState, Plugin, Transaction } from 'prosemirror-state'
 import { Step } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
 import { io, Socket as _Socket } from 'socket.io-client'
 import Extension from '../lib/Extension'
+
+const EMIT_TRANSACTION_THROTTLE_WAIT = 200
 
 export interface CollabOptions {
   socketUri: string
@@ -91,19 +94,27 @@ export default class Collab extends Extension {
 
   editable = () => this._editable
 
-  dispatchTransaction = (view: EditorView, tr: Transaction, state: EditorState) => {
-    if (tr.docChanged) {
-      const sendable = sendableSteps(state)
-      if (sendable) {
-        this.socket.emit('transaction', {
-          version: getVersion(state),
-          steps: sendable.steps,
-        })
+  _dispatchTransaction = throttle(
+    (view: EditorView, tr: Transaction, state: EditorState) => {
+      if (tr.docChanged) {
+        const sendable = sendableSteps(state)
+        if (sendable) {
+          this.socket.emit('transaction', {
+            version: getVersion(state),
+            steps: sendable.steps,
+          })
+        }
+
+        this.options.onDispatchTransaction?.(view, tr)
       }
+    },
+    EMIT_TRANSACTION_THROTTLE_WAIT,
+    // NOTE: Must set trailing to true to fix safari IME input problem.
+    { leading: false, trailing: true }
+  )
 
-      this.options.onDispatchTransaction?.(view, tr)
-    }
-
+  dispatchTransaction = (view: EditorView, tr: Transaction, state: EditorState) => {
+    this._dispatchTransaction(view, tr, state)
     return state
   }
 
