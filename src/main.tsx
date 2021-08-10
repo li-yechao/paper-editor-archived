@@ -46,7 +46,7 @@ import Text from './Editor/nodes/Text'
 import Title from './Editor/nodes/Title'
 import TodoList from './Editor/nodes/TodoList'
 import VideoBlock, { VideoBlockOptions } from './Editor/nodes/VideoBlock'
-import Collab, { Version } from './Editor/plugins/Collab'
+import Collab, { isError, Version } from './Editor/plugins/Collab'
 import DropPasteFile from './Editor/plugins/DropPasteFile'
 import Placeholder from './Editor/plugins/Placeholder'
 import Plugins from './Editor/plugins/Plugins'
@@ -147,9 +147,13 @@ const App = hot(() => {
               path: file.name,
               content: await file.arrayBuffer(),
             }
-        return new Promise<string>(resolve => {
+        return new Promise<string>((resolve, reject) => {
           _collab.socket.emit('createFile', { source }, res => {
-            resolve(res.hash[res.hash.length - 1]!)
+            if (isError(res)) {
+              reject(new Error(res.message))
+            } else {
+              resolve(res.hash[res.hash.length - 1]!)
+            }
           })
         })
       },

@@ -99,10 +99,18 @@ export default class Collab extends Extension {
       if (tr.docChanged) {
         const sendable = sendableSteps(state)
         if (sendable) {
-          this.socket.emit('transaction', {
-            version: getVersion(state),
-            steps: sendable.steps,
-          })
+          this.socket.emit(
+            'transaction',
+            {
+              version: getVersion(state),
+              steps: sendable.steps,
+            },
+            e => {
+              if (isError(e)) {
+                console.error(e)
+              }
+            }
+          )
         }
 
         this.options.onDispatchTransaction?.(view, tr)
@@ -119,7 +127,11 @@ export default class Collab extends Extension {
   }
 
   save() {
-    this.socket.emit('save')
+    this.socket.emit('save', e => {
+      if (isError(e)) {
+        console.error(e)
+      }
+    })
   }
 }
 
@@ -136,12 +148,21 @@ export interface CreateFileSource {
   content: ArrayBuffer
 }
 
+export type Error = { message: string }
+
+export function isError(e: any): e is Error {
+  return typeof e?.message === 'string'
+}
+
 export interface IOEmitEvents {
-  transaction: (e: { version: Version; steps: DocJson[] }) => void
-  save: () => void
+  transaction: (
+    e: { version: Version; steps: DocJson[] },
+    cb?: (e: Error | { version: Version }) => void
+  ) => void
+  save: (cb?: (e?: Error) => void) => void
   createFile: (
     e: { source: CreateFileSource | CreateFileSource[] },
-    cb: (e: { hash: string[] }) => void
+    cb?: (e: Error | { hash: string[] }) => void
   ) => void
 }
 
