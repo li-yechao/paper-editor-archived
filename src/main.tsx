@@ -24,7 +24,6 @@ import { keymap } from 'prosemirror-keymap'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { hot } from 'react-hot-loader/root'
-import { useUpdate } from 'react-use'
 import Extension from './Editor/lib/Extension'
 import Bold from './Editor/marks/Bold'
 import Code from './Editor/marks/Code'
@@ -53,6 +52,7 @@ import Plugins from './Editor/plugins/Plugins'
 import Editor from './index'
 import Messager from './Messager'
 import { useOnSave } from './utils/useOnSave'
+import { useSafeUpdate } from './utils/useSafeUpdate'
 
 type Config = {
   socketUri?: string
@@ -81,7 +81,7 @@ const _Editor = styled(Editor)`
 `
 
 const App = hot(() => {
-  const update = useUpdate()
+  const update = useSafeUpdate()
 
   const messager = useRef(new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>())
   const [config, setConfig] = useState<Config>(
@@ -109,115 +109,117 @@ const App = hot(() => {
   const _title = useRef<string>()
 
   useEffect(() => {
-    if (!config.socketUri || !config.paperId) {
-      return
-    }
+    ;(async () => {
+      if (!config.socketUri || !config.paperId) {
+        return
+      }
 
-    const _collab = (collab.current = new Collab({
-      socketUri: config.socketUri,
-      paperId: config.paperId,
-      accessToken: config.accessToken,
-      onPersistence: e => messager.current.emit('persistence', e),
-      onDispatchTransaction: (view, tr) => {
-        if (tr.docChanged) {
-          messager.current.emit('change', { version: getVersion(view.state) })
+      const _collab = (collab.current = new Collab({
+        socketUri: config.socketUri,
+        paperId: config.paperId,
+        accessToken: config.accessToken,
+        onPersistence: e => messager.current.emit('persistence', e),
+        onDispatchTransaction: (view, tr) => {
+          if (tr.docChanged) {
+            messager.current.emit('change', { version: getVersion(view.state) })
 
-          const firstChild = view.state.doc.firstChild
-          if (firstChild?.type.name === 'title') {
-            const title = firstChild.textContent
-            if (_title.current !== title) {
-              _title.current = title
+            const firstChild = view.state.doc.firstChild
+            if (firstChild?.type.name === 'title') {
+              const title = firstChild.textContent
+              if (_title.current !== title) {
+                _title.current = title
+              }
+              messager.current.emit('titleChange', { title })
             }
-            messager.current.emit('titleChange', { title })
           }
-        }
-      },
-    }))
-
-    const uploadOptions: ImageBlockOptions & VideoBlockOptions = {
-      upload: async (file: File | File[]) => {
-        const source = Array.isArray(file)
-          ? await Promise.all(
-              file.map(async i => ({
-                path: i.name,
-                content: await i.arrayBuffer(),
-              }))
-            )
-          : {
-              path: file.name,
-              content: await file.arrayBuffer(),
-            }
-        return new Promise<string>((resolve, reject) => {
-          _collab.socket.emit('createFile', { source }, res => {
-            if (isError(res)) {
-              reject(new Error(res.message))
-            } else {
-              resolve(res.hash[res.hash.length - 1]!)
-            }
-          })
-        })
-      },
-      getSrc: hash => _collab.paper.then(p => `${p.ipfsGatewayUri}/${hash}`),
-      thumbnail: {
-        maxSize: 1024,
-      },
-    }
-
-    const imageBlock = new ImageBlock(uploadOptions)
-    const videoBlock = new VideoBlock(uploadOptions)
-
-    extensions.current = [
-      _collab,
-      new Placeholder(),
-      new Doc('title tag_list block+'),
-      new Text(),
-      new Title(),
-      new Paragraph(),
-      new Heading(),
-      new TagList(),
-      new Blockquote(),
-      new TodoList(),
-      new OrderedList(),
-      new BulletList(),
-      new CodeBlock({ clientID: '' }),
-
-      new Bold(),
-      new Italic(),
-      new Underline(),
-      new Strikethrough(),
-      new Highlight(),
-      new Code(),
-      new Link(),
-
-      new Plugins([
-        keymap({
-          'Mod-z': undo,
-          'Shift-Mod-z': redo,
-          'Mod-y': redo,
-          Backspace: undoInputRule,
-        }),
-        keymap(baseKeymap),
-        history(),
-        gapCursor(),
-        dropCursor({ color: 'currentColor' }),
-      ]),
-
-      imageBlock,
-      videoBlock,
-
-      new DropPasteFile({
-        fileToNode: (view, file) => {
-          if (imageBlock && file.type.startsWith('image/')) {
-            return imageBlock.create(view.state.schema, file)
-          } else if (videoBlock && file.type.startsWith('video/')) {
-            return videoBlock.create(view.state.schema, file)
-          }
-          return
         },
-      }),
-    ]
+      }))
 
-    update()
+      const uploadOptions: ImageBlockOptions & VideoBlockOptions = {
+        upload: async (file: File | File[]) => {
+          const source = Array.isArray(file)
+            ? await Promise.all(
+                file.map(async i => ({
+                  path: i.name,
+                  content: await i.arrayBuffer(),
+                }))
+              )
+            : {
+                path: file.name,
+                content: await file.arrayBuffer(),
+              }
+          return new Promise<string>((resolve, reject) => {
+            _collab.socket.emit('createFile', { source }, res => {
+              if (isError(res)) {
+                reject(new Error(res.message))
+              } else {
+                resolve(res.hash[res.hash.length - 1]!)
+              }
+            })
+          })
+        },
+        getSrc: hash => _collab.paper.then(p => `${p.ipfsGatewayUri}/${hash}`),
+        thumbnail: {
+          maxSize: 1024,
+        },
+      }
+
+      const imageBlock = new ImageBlock(uploadOptions)
+      const videoBlock = new VideoBlock(uploadOptions)
+
+      extensions.current = [
+        _collab,
+        new Placeholder(),
+        new Doc('title tag_list block+'),
+        new Text(),
+        new Title(),
+        new Paragraph(),
+        new Heading(),
+        new TagList(),
+        new Blockquote(),
+        new TodoList(),
+        new OrderedList(),
+        new BulletList(),
+        new CodeBlock({ clientID: (await _collab.paper).clientID }),
+
+        new Bold(),
+        new Italic(),
+        new Underline(),
+        new Strikethrough(),
+        new Highlight(),
+        new Code(),
+        new Link(),
+
+        new Plugins([
+          keymap({
+            'Mod-z': undo,
+            'Shift-Mod-z': redo,
+            'Mod-y': redo,
+            Backspace: undoInputRule,
+          }),
+          keymap(baseKeymap),
+          history(),
+          gapCursor(),
+          dropCursor({ color: 'currentColor' }),
+        ]),
+
+        imageBlock,
+        videoBlock,
+
+        new DropPasteFile({
+          fileToNode: (view, file) => {
+            if (imageBlock && file.type.startsWith('image/')) {
+              return imageBlock.create(view.state.schema, file)
+            } else if (videoBlock && file.type.startsWith('video/')) {
+              return videoBlock.create(view.state.schema, file)
+            }
+            return
+          },
+        }),
+      ]
+
+      update()
+    })()
   }, [config])
 
   useOnSave(save)
