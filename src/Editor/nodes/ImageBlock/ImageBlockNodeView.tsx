@@ -17,7 +17,7 @@ import styled from '@emotion/styled'
 import { TextSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
-import { useMountedState, useUpdate } from 'react-use'
+import { useSafeUpdate } from '../../../utils/useSafeUpdate'
 import { LazyComponent } from '../../lib/LazyComponent'
 import { NodeViewReact, StrictProsemirrorNode } from '../Node'
 import { ImageBlockAttrs, ImageBlockOptions } from './ImageBlock'
@@ -88,9 +88,7 @@ export default class ImageBlockNodeView extends NodeViewReact<ImageBlockAttrs> {
   }
 
   component = () => {
-    const _mounted = useMountedState()
-    const _update = useUpdate()
-    const update = useCallback(() => _mounted() && _update(), [])
+    const update = useSafeUpdate()
 
     const file: File | undefined = (this.node as any).file
 

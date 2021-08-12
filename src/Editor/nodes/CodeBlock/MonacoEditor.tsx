@@ -15,8 +15,8 @@
 import { EditorContentManager } from '@convergencelabs/monaco-collab-ext'
 import styled from '@emotion/styled'
 import { editor, IKeyboardEvent } from 'monaco-editor'
-import React, { useRef, useEffect, useCallback } from 'react'
-import { useMountedState, useUpdate } from 'react-use'
+import React, { useRef, useEffect } from 'react'
+import { useSafeUpdate } from '../../../utils/useSafeUpdate'
 
 export type MonacoInstance = {
   editor: editor.ICodeEditor
@@ -41,9 +41,7 @@ export interface MonacoEditorProps {
 }
 
 const MonacoEditor = (props: MonacoEditorProps) => {
-  const _isMounted = useMountedState()
-  const _update = useUpdate()
-  const update = useCallback(() => _isMounted() && _update(), [])
+  const update = useSafeUpdate()
 
   const container = useRef<HTMLDivElement>(null)
   const monacoEditor = useRef<editor.ICodeEditor>()

@@ -21,8 +21,8 @@ import dashjs from 'dashjs'
 import { TextSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import React, { useCallback, useEffect, useRef } from 'react'
-import { useMountedState, useUpdate } from 'react-use'
 import CupertinoActivityIndicator from '../../../components/CupertinoActivityIndicator'
+import { useSafeUpdate } from '../../../utils/useSafeUpdate'
 import { getImageThumbnail, readAsDataURL } from '../../lib/image'
 import { LazyComponent } from '../../lib/LazyComponent'
 import { NodeViewReact, StrictProsemirrorNode } from '../Node'
@@ -98,9 +98,7 @@ export default class VideoBlockNodeView extends NodeViewReact<VideoBlockAttrs> {
   }
 
   component = () => {
-    const _mounted = useMountedState()
-    const _update = useUpdate()
-    const update = useCallback(() => _mounted() && _update(), [])
+    const update = useSafeUpdate()
 
     const file: File | undefined = (this.node as any).file
 

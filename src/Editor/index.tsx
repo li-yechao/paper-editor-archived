@@ -15,11 +15,10 @@
 import { cx } from '@emotion/css'
 import { TextSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
-import React, { forwardRef, useCallback } from 'react'
+import React, { forwardRef } from 'react'
 import { useEffect } from 'react'
 import { useImperativeHandle } from 'react'
 import { useRef } from 'react'
-import { useMountedState, useUpdate } from 'react-use'
 import { MenuComponentType } from './lib/createMenuComponent'
 import Extension from './lib/Extension'
 import FloatingToolbar from './lib/FloatingToolbar'
@@ -27,6 +26,7 @@ import ExtensionManager from './lib/ExtensionManager'
 import { proseMirrorStyle } from './style'
 import styled from '@emotion/styled'
 import CupertinoActivityIndicator from '../components/CupertinoActivityIndicator'
+import { useSafeUpdate } from '../utils/useSafeUpdate'
 
 export interface EditorProps {
   className?: string
@@ -41,9 +41,7 @@ export interface EditorElement {
 
 const Editor = React.memo(
   forwardRef<EditorElement, EditorProps>((props, ref) => {
-    const _mounted = useMountedState()
-    const _update = useUpdate()
-    const update = useCallback(() => _mounted() && _update(), [])
+    const update = useSafeUpdate()
 
     const container = useRef<HTMLDivElement>(null)
     const editor = useRef<{ view: EditorView; menus: MenuComponentType[] }>()
