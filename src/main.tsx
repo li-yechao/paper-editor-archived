@@ -23,7 +23,6 @@ import { undoInputRule } from 'prosemirror-inputrules'
 import { keymap } from 'prosemirror-keymap'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
-import { hot } from 'react-hot-loader/root'
 import Extension from './Editor/lib/Extension'
 import Bold from './Editor/marks/Bold'
 import Code from './Editor/marks/Code'
@@ -80,7 +79,7 @@ const _Editor = styled(Editor)`
   margin: auto;
 `
 
-const App = hot(() => {
+const App = () => {
   const update = useSafeUpdate()
 
   const messager = useRef(new Messager<{}, MessagerEmitEvents, MessagerReservedEvents>())
@@ -233,6 +232,6 @@ const App = hot(() => {
       <_Editor autoFocus extensions={extensions.current} />
     </StylesProvider>
   )
-})
+}
 
 ReactDOM.render(<App />, document.getElementById('app'))

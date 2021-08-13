@@ -17,6 +17,7 @@ import styled from '@emotion/styled'
 import { editor, IKeyboardEvent } from 'monaco-editor'
 import React, { useRef, useEffect } from 'react'
 import { useSafeUpdate } from '../../../utils/useSafeUpdate'
+import './monaco.vite'
 
 export type MonacoInstance = {
   editor: editor.ICodeEditor
