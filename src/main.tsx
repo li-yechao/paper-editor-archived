@@ -37,6 +37,7 @@ import CodeBlock from './Editor/nodes/CodeBlock'
 import Doc from './Editor/nodes/Doc'
 import Heading from './Editor/nodes/Heading'
 import ImageBlock, { ImageBlockOptions } from './Editor/nodes/ImageBlock'
+import Math from './Editor/nodes/Math'
 import OrderedList from './Editor/nodes/OrderedList'
 import Paragraph from './Editor/nodes/Paragraph'
 import TagList from './Editor/nodes/TagList'
@@ -180,6 +181,7 @@ const App = () => {
         new OrderedList(),
         new BulletList(),
         new CodeBlock({ clientID: (await _collab.paper).clientID }),
+        new Math(),
 
         new Bold(),
         new Italic(),

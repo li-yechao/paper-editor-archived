@@ -305,4 +305,26 @@ export const proseMirrorStyle = css`
   &.ProseMirror-focused .ProseMirror-gapcursor {
     display: block;
   }
+
+  math-inline,
+  math-display {
+    .math-src {
+      &:before,
+      &:after {
+        display: none;
+      }
+
+      .ProseMirror {
+        outline: none;
+      }
+    }
+
+    &.ProseMirror-selectednode {
+      background-color: #eee;
+    }
+  }
+
+  math-display {
+    margin: 1em 0;
+  }
 `
