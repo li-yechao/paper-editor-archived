@@ -309,6 +309,9 @@ export const proseMirrorStyle = css`
   math-inline,
   math-display {
     .math-src {
+      white-space: pre-wrap;
+      word-break: break-all;
+
       &:before,
       &:after {
         display: none;
@@ -321,6 +324,16 @@ export const proseMirrorStyle = css`
 
     &.ProseMirror-selectednode {
       background-color: #eee;
+    }
+
+    .katex-html {
+      white-space: pre-wrap;
+    }
+  }
+
+  math-inline {
+    .math-render {
+      display: inline;
     }
   }
 
