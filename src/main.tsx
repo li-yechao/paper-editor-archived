@@ -14,6 +14,7 @@
 
 import styled from '@emotion/styled'
 import { StylesProvider } from '@material-ui/core'
+import { Alert } from '@material-ui/lab'
 import { getVersion } from 'prosemirror-collab'
 import { baseKeymap } from 'prosemirror-commands'
 import { dropCursor } from 'prosemirror-dropcursor'
@@ -97,6 +98,7 @@ const App = () => {
 
   const collab = useRef<Collab>()
   const extensions = useRef<Extension[]>()
+  const error = useRef<Error>()
 
   const save = useCallback(() => collab.current?.save(), [])
 
@@ -132,6 +134,10 @@ const App = () => {
               messager.current.emit('titleChange', { title })
             }
           }
+        },
+        onError: e => {
+          error.current = e
+          update()
         },
       }))
 
@@ -232,8 +238,31 @@ const App = () => {
   return (
     <StylesProvider injectFirst>
       <_Editor autoFocus extensions={extensions.current} />
+      {error.current && (
+        <_ErrorMask>
+          <Alert severity="error">{error.current.message}</Alert>
+        </_ErrorMask>
+      )}
     </StylesProvider>
   )
 }
+
+const _ErrorMask = styled.div`
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10%;
+  background-color: rgba(250, 250, 250, 0.8);
+
+  @media (prefers-color-scheme: dark) {
+    background-color: rgba(48, 48, 48, 0.8);
+  }
+`
 
 ReactDOM.render(<App />, document.getElementById('app'))

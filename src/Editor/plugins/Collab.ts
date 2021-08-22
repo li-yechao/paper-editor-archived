@@ -28,6 +28,7 @@ export interface CollabOptions {
   accessToken?: string
   onDispatchTransaction?: (view: EditorView, tr: Transaction) => void
   onPersistence?: (e: { version: Version; updatedAt: number; writable: boolean }) => void
+  onError?: (e: globalThis.Error) => void
 }
 
 export default class Collab extends Extension {
@@ -106,7 +107,7 @@ export default class Collab extends Extension {
           },
           e => {
             if (isError(e)) {
-              console.error(e)
+              this.options.onError?.(new Error(e.message))
             }
           }
         )
