@@ -137,13 +137,11 @@ export default class ExtensionManager {
       nodeViews: this.nodeViews,
       editable,
       dispatchTransaction: function (tr) {
-        let state = view.state.apply(tr)
+        view.updateState(view.state.apply(tr))
 
         for (const f of dispatchTransactionHandlers) {
-          state = f(view, tr, state)
+          f(view, tr)
         }
-
-        view.updateState(state)
       },
     })
 

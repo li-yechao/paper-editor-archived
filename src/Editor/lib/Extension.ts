@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EditorState, Plugin, Transaction } from 'prosemirror-state'
+import { Plugin, Transaction } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 
 export default abstract class Extension {
@@ -20,11 +20,7 @@ export default abstract class Extension {
 
   view?: EditorView
 
-  readonly dispatchTransaction?: (
-    view: EditorView,
-    tr: Transaction,
-    state: EditorState
-  ) => EditorState
+  readonly dispatchTransaction?: (view: EditorView, tr: Transaction) => void
 
   readonly defaultValue?: () => PromiseOr<{ [key: string]: any } | undefined>
 
