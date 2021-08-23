@@ -64,10 +64,16 @@ export default class Collab extends Extension {
         this._editable = e.writable
         this.options.onPersistence?.(e)
       })
-      .on('error', () => {})
-      .on('connect_error', () => {})
+      .on('error', e => {
+        this.options.onError?.(new Error(e.message))
+      })
+      .on('connect_error', e => {
+        this.options.onError?.(e)
+      })
       .on('connect', () => {})
-      .on('disconnect', () => {})
+      .on('disconnect', e => {
+        this.options.onError?.(new Error(e))
+      })
   }
 
   private _editable = false
