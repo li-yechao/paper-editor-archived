@@ -71,6 +71,7 @@ class HeadingNodeView extends NodeView<HeadingAttrs> {
     `)
     const zero = document.createElement('span')
     zero.innerText = '\u200b'
+    zero.contentEditable = 'false'
     zero.classList.add(css`
       position: absolute;
       left: 0;
